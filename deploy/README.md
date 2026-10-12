@@ -18,24 +18,38 @@ Claude Code ──https──▶ caddy:443 ──/v1/*──▶ collector:4318�
 
 - 入口は Caddy 1 つで、1 つのホスト名で OTLP と Grafana を受けます（[`common/Caddyfile`](common/Caddyfile)）。
 - 証明書は Caddy の内部 CA が発行します（`tls internal`）。公開 DNS 名で Let's Encrypt を使う場合は `tls internal` の行を消します。
-- Collector は `OTEL_INGEST_TOKEN` と一致する `Authorization: Bearer` だけを受け付けます。
+- Collector は `.env` の `OTEL_INGEST_TOKEN` と一致する `Authorization: Bearer` だけを受け付けます。
 - 動作確認用に、Collector の 4318 番をホスト自身（127.0.0.1）にだけ TLS なしで開けています。
 
 ## 起動手順
 
 ```bash
-cd deploy/b-grafana          # または d-clickhouse / d-duckdb
-cp .env.example .env
-# .env を編集：SITE_ADDRESS、OTEL_INGEST_TOKEN（openssl rand -hex 32）、各パスワード
-docker compose up -d         # d-duckdb はビルドがあるので初回は少し時間がかかる
+cd deploy
+bash setup-env.sh d-clickhouse 192.168.1.10   # 案のディレクトリ名と、入口のホスト名か IP アドレス
+cd d-clickhouse
+docker compose up -d                          # d-duckdb はビルドがあるので初回は少し時間がかかる
 docker compose ps
 ```
 
-Grafana は `https://<SITE_ADDRESS>/` で開きます（ユーザー `admin`、パスワードは `GRAFANA_ADMIN_PASSWORD`）。
+`setup-env.sh` は `.env.example` から `.env` を作り、トークンとパスワードをランダムな値で埋めます（権限は 600）。
+もう一度実行しても設定済みの値は変えないので、SITE_ADDRESS だけ変えたいときも同じコマンドで済みます。
+
+`.env` の中身は 3 つに分かれています。
+
+| 区分 | 例 | 未設定のとき |
+|---|---|---|
+| 必須 | `OTEL_INGEST_TOKEN`、`GRAFANA_ADMIN_PASSWORD`、`CLICKHOUSE_PASSWORD`（案 D） | `docker compose` が「〜が未設定です」と表示して止まる |
+| よく変えるもの | `SITE_ADDRESS` | `localhost` |
+| 任意 | 保持期間、イメージのバージョンなど（`.env.example` にコメントで既定値） | `compose.yaml` の既定値 |
+
+Grafana は `https://<SITE_ADDRESS>/` で開きます（ユーザー `admin`、パスワードは `.env` の `GRAFANA_ADMIN_PASSWORD`）。
 ブラウザにも Caddy のルート証明書（下記 `caddy-root.crt`）を信頼させてください。
 ダッシュボード「Claude Code」フォルダの「Claude Code 利用状況」が自動で入ります。
 
 同じホストで複数の案を同時に動かす場合は、443 番と 4318 番が重なるので `compose.yaml` の `ports` を変えてください。
+
+WSL で Windows 側のディレクトリ（`/mnt/c/...`）から動かす場合、案 D′ は `data/` をバインドマウントして所有者を変えるため、
+権限エラーになることがあります。その場合は WSL 側のディレクトリ（`~/...`）に clone してください。
 
 ## クライアント（Claude Code）の設定
 
