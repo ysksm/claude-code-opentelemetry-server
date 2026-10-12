@@ -21,12 +21,14 @@
 | 資料一覧 | `https://<SITE_ADDRESS>/docs/`（このページのスライド版・利用者向けの説明・設定手順） |
 | 端末の設定ファイル | `https://<SITE_ADDRESS>/client/`（`setup-client.sh`・`caddy-root.crt`。だれでも落とせる） |
 | ユーザー | `admin` |
-| パスワード | `.env` の `GRAFANA_ADMIN_PASSWORD` |
+| パスワード | `.env` の `GRAFANA_ADMIN_PASSWORD`（`grep '^GRAFANA_ADMIN_PASSWORD=' .env` で表示。`=` より後ろ） |
 | ダッシュボード | 左メニュー「Dashboards」→ フォルダ「Claude Code」→「Claude Code 利用状況（…）」 |
 
 - 証明書が Caddy の内部 CA（`tls internal`）の場合、ブラウザに警告が出ます。サーバーから取り出した `caddy-root.crt` を
   OS の信頼ストアに入れてください（macOS はキーチェーンアクセスで「常に信頼」、Windows は「信頼されたルート証明機関」）。
 - `admin` は管理用です。見るだけの人には別のアカウントを作ってください（[5.](#5-閲覧者のアカウントを作る)）。
+- `admin` のパスワードは、Grafana が起動するたびに `.env` の値に合わせ直されます（[`common/grafana/start.sh`](../deploy/common/grafana/start.sh)）。
+  変えるときは `.env` を書き換えて `docker compose up -d --force-recreate grafana`。画面から変えても、次の起動で `.env` の値に戻ります。
 - 利用者が自分でアカウントを作ることはできません（`GF_USERS_ALLOW_SIGN_UP=false`）。
 
 ## 2. ダッシュボードの見方
@@ -198,6 +200,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/x
 | `--check` が「証明書を検証できません」 | `--ca-cert` で `caddy-root.crt` を渡したか。Caddy のボリュームを作り直して CA が変わっていないか |
 | `--check` は OK なのにデータが来ない | `--check` は curl で確かめるので、Claude Code 側の証明書の読み込みまでは確かめていない。Claude Code を再起動したか確認し、それでも来なければ `NODE_EXTRA_CA_CERTS=~/.claude/otel/ca.crt` をシェルの環境変数にも設定して試す |
 | 「サーバーに接続できません」 | 端末から 443 番に届くか（VPN、ファイアウォール）。`SITE_ADDRESS` の名前を引けるか |
+| `admin` でログインできない | パスワードは `.env` の `GRAFANA_ADMIN_PASSWORD`。`docker compose up -d --force-recreate grafana` で合わせ直し、`docker compose logs grafana \| grep start.sh` に「合わせました」と出るか確認。何度も失敗した直後は 5 分ほど待つ |
 | ブラウザで Grafana が証明書エラー | `caddy-root.crt` を OS の信頼ストアに入れる |
 | 全員分のデータが止まった | `docker compose ps` と `docker compose logs collector`。D は ClickHouse、B は Prometheus・Loki が動いているか。ディスクが一杯になっていないか |
 | D′ で直近のデータだけ出ない | 変換の間隔（既定 5 分）を待つ。`docker compose logs converter` |
