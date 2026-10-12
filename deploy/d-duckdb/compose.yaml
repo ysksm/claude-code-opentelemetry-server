@@ -1,0 +1,95 @@
+# 案 D′：Collector → JSONL（原本）→ converter（DuckDB）→ Parquet → Grafana（DuckDB プラグイン）
+name: claude-otel-duckdb
+
+services:
+  caddy:
+    image: caddy:${CADDY_VERSION}
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    volumes:
+      - ../common/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      collector:
+        condition: service_started
+      grafana:
+        condition: service_started
+
+  # data/ の下のディレクトリを作り、Collector（uid 10001）が書けるようにする
+  init:
+    image: busybox:1.37.0
+    command: >
+      sh -c "mkdir -p /data/raw/logs /data/raw/metrics /data/parquet /data/state
+      && chown -R 10001:10001 /data/raw"
+    volumes:
+      - ./data:/data
+
+  collector:
+    image: otel/opentelemetry-collector-contrib:${OTELCOL_VERSION}
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    environment:
+      OTEL_INGEST_TOKEN: ${OTEL_INGEST_TOKEN}
+      RAW_RETENTION_DAYS: ${RAW_RETENTION_DAYS:-400}
+    volumes:
+      - ./collector/config.yaml:/etc/otelcol/config.yaml:ro
+      - ./data/raw:/data/raw
+    ports:
+      # 動作確認用（TLS なし）。ホスト自身からだけ受ける。
+      - "127.0.0.1:4318:4318"
+    mem_limit: 512m
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  converter:
+    build:
+      context: ./converter
+      args:
+        DUCKDB_VERSION: ${DUCKDB_VERSION}
+    restart: unless-stopped
+    environment:
+      CONVERT_INTERVAL_SECONDS: ${CONVERT_INTERVAL_SECONDS:-300}
+      PARQUET_RETENTION_DAYS: ${PARQUET_RETENTION_DAYS:-0}
+    volumes:
+      - ./data/raw:/data/raw:ro
+      - ./data/parquet:/data/parquet
+      - ./data/state:/data/state
+    mem_limit: 1g
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  grafana:
+    build:
+      context: ./grafana
+      args:
+        GRAFANA_VERSION: ${GRAFANA_VERSION}
+        DUCKDB_PLUGIN_VERSION: ${DUCKDB_PLUGIN_VERSION}
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_SERVER_ROOT_URL: https://${SITE_ADDRESS}/
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana-dashboards:ro
+      - ./data/parquet:/data/parquet:ro
+    healthcheck:
+      # Ubuntu 版イメージに curl/wget が無い場合に備え、bash だけで確認する
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/3000 && printf 'GET /api/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+volumes:
+  caddy-data: {}
+  grafana-data: {}

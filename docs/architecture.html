@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OTel 収集サーバー構成案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;600&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F7F4EF; --paper-2: #EEE8DF;
+  --ink: #221A14; --ink-2: #54483E; --ink-3: #8A7D72; --rule: #DDD3C7;
+  --pw: #B4532F; --pw-soft: #F6DFD3;
+  --ai: #2F6FBF; --ai-soft: #D9E7F8;
+  --green: #3C7A4E; --green-soft: #DCEEDF;
+  --amber: #B7791F; --amber-soft: #FBEBC8;
+  --red: #B4432F; --red-soft: #F6DAD5;
+  --violet: #6B4FA8; --violet-soft: #E6DFF4;
+  --term: #1B1511; --term-ink: #F0E6DC; --term-dim: #A08E80;
+  --term-key: #F2A27E; --term-str: #9EC9E0; --term-num: #F5C97A;
+  --display: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --body: "IBM Plex Sans JP", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--term); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; overflow: hidden; }
+#stage { position: fixed; inset: 0; padding: 16px; }
+.deck { width: 1280px; height: 720px; position: absolute; left: 50%; top: 50%; transform-origin: 0 0; }
+.slide { position: absolute; inset: 0; background: var(--paper); color: var(--ink); padding: 48px 68px 56px; display: none; flex-direction: column; gap: 18px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+.slide.active { display: flex; }
+.slide::after { content: attr(data-n) " / " attr(data-total); position: absolute; right: 68px; bottom: 20px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.slide::before { content: "Claude Code × OpenTelemetry — 収集サーバー構成案"; position: absolute; left: 68px; bottom: 20px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); letter-spacing: .04em; }
+.slide.cover::before, .slide.cover::after { display: none; }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--pw); margin: 0; }
+h1 { font-family: var(--display); font-weight: 900; font-size: 60px; line-height: 1.15; margin: 0; }
+h2 { font-family: var(--display); font-weight: 700; font-size: 32px; line-height: 1.25; margin: 0; }
+h3 { font-family: var(--display); font-weight: 700; font-size: 17px; margin: 0 0 6px; }
+p { margin: 0; }
+.lead { font-size: 18px; color: var(--ink-2); }
+.muted { color: var(--ink-3); }
+.small { font-size: 14px; } .xs { font-size: 12.5px; }
+code, .mono { font-family: var(--mono); }
+p code, li code, td code, th code, .box code { background: var(--paper-2); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+ul, ol { margin: 0; padding-left: 1.3em; }
+li { margin: 3px 0; }
+li::marker { color: var(--pw); }
+b, strong { font-weight: 600; }
+a { color: var(--pw); text-decoration: none; border-bottom: 1px solid var(--pw-soft); }
+.cols { display: grid; gap: 22px; flex: 1; min-height: 0; }
+.cols-2 { grid-template-columns: 1fr 1fr; }
+.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.cols-52 { grid-template-columns: 1.2fr 1fr; }
+.cols-25 { grid-template-columns: 1fr 1.25fr; }
+.stack { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.panel { background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 12px 16px; }
+.panel.pw { border-top: 3px solid var(--pw); } .panel.ai { border-top: 3px solid var(--ai); }
+.panel.green { border-top: 3px solid var(--green); } .panel.amber { border-top: 3px solid var(--amber); }
+.panel.red { border-top: 3px solid var(--red); } .panel.violet { border-top: 3px solid var(--violet); }
+.tag { display: inline-block; font-family: var(--mono); font-size: 11.5px; padding: 1px 8px; border-radius: 999px; background: var(--pw-soft); color: var(--pw); vertical-align: middle; white-space: nowrap; }
+.tag.ai { background: var(--ai-soft); color: var(--ai); } .tag.green { background: var(--green-soft); color: var(--green); }
+.tag.amber { background: var(--amber-soft); color: var(--amber); } .tag.red { background: var(--red-soft); color: var(--red); }
+.tag.violet { background: var(--violet-soft); color: var(--violet); }
+ul.pm { list-style: none; padding-left: 1.4em; }
+ul.pm li { text-indent: -1.4em; }
+ul.pm li.good::before { content: "○ "; color: var(--green); font-weight: 700; }
+ul.pm li.bad::before { content: "△ "; color: var(--red); font-weight: 700; }
+.term { background: var(--term); color: var(--term-ink); border-radius: 8px; padding: 12px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; overflow: hidden; white-space: pre; margin: 0; }
+.term .k { color: var(--term-key); } .term .s { color: var(--term-str); } .term .n { color: var(--term-num); } .term .c { color: var(--term-dim); font-style: italic; }
+.term.sm { font-size: 11.5px; }
+.term.xs { font-size: 11px; line-height: 1.36; padding: 10px 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); font-size: 12.5px; letter-spacing: .04em; }
+tr:last-child td { border-bottom: none; }
+.tight td, .tight th { padding: 4px 8px; }
+.callout { background: var(--pw-soft); border-left: 4px solid var(--pw); border-radius: 6px; padding: 9px 14px; font-size: 14px; }
+.callout.ai { background: var(--ai-soft); border-left-color: var(--ai); }
+.callout.red { background: var(--red-soft); border-left-color: var(--red); }
+.callout.green { background: var(--green-soft); border-left-color: var(--green); }
+.src { font-family: var(--mono); font-size: 11px; color: var(--ink-3); border-top: 1px dashed var(--rule); padding-top: 6px; margin-top: auto; }
+.src a { color: var(--ink-3); border-bottom-color: var(--rule); }
+/* ---------- architecture diagram ---------- */
+.arch { display: flex; align-items: center; gap: 8px; }
+.arch .col { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.box { background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; font-size: 13px; line-height: 1.45; }
+.box .t { font-family: var(--display); font-weight: 700; font-size: 15px; }
+.box .p { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.box.client { background: var(--paper-2); }
+.box.edge { border-color: var(--amber); background: var(--amber-soft); }
+.box.col-otel { border-color: var(--pw); background: var(--pw-soft); }
+.box.store { border-color: var(--ai); background: var(--ai-soft); }
+.box.viz { border-color: var(--green); background: var(--green-soft); }
+.box.dashed { border-style: dashed; background: transparent; }
+.arr { align-self: center; font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-align: center; line-height: 1.25; min-width: 54px; }
+.arr b { display: block; font-size: 20px; color: var(--pw); line-height: 1; }
+.compose { font-family: var(--mono); font-size: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.compose span { background: var(--term); color: var(--term-ink); border-radius: 4px; padding: 2px 8px; }
+/* ---------- cover ---------- */
+.cover { background: var(--term); color: var(--term-ink); justify-content: flex-end; padding-bottom: 80px; }
+.cover .eyebrow { color: var(--term-key); }
+.cover h1 { color: #fff; font-size: 66px; }
+.cover .lead { color: var(--term-ink); max-width: 46em; }
+.cover .meta { font-family: var(--mono); font-size: 13px; color: var(--term-dim); display: flex; gap: 28px; }
+.cover .frame { position: absolute; right: 60px; top: 56px; width: 520px; font-family: var(--mono); font-size: 12.5px; color: var(--term-dim); line-height: 1.6; white-space: pre; border-left: 2px solid var(--pw); padding-left: 16px; }
+.cover .frame .k { color: var(--term-key); } .cover .frame .s { color: var(--term-str); }
+/* ---------- option card / matrix ---------- */
+.opt { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 12px; flex: 1; min-height: 0; }
+.opt .panel { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.opt .letter { font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1; }
+.dots { font-family: var(--mono); letter-spacing: 1px; color: var(--pw); white-space: nowrap; }
+.dots .off { color: var(--rule); }
+td.c, th.c { text-align: center; }
+.road { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.road .panel { position: relative; }
+.road .no { font-family: var(--display); font-weight: 900; font-size: 26px; color: var(--pw); line-height: 1.1; }
+#hud { position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; color: var(--term-dim); opacity: .7; }
+:focus-visible { outline: 2px solid var(--pw); outline-offset: 2px; }
+body.overview #stage { display: block; overflow: auto; padding: 24px; }
+body.overview .deck { position: static; width: auto; height: auto; transform: none !important; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+body.overview .slide { display: flex; position: relative; width: 100%; aspect-ratio: 16/9; height: auto; zoom: .32; cursor: pointer; }
+@media print {
+  body { overflow: visible; background: #fff; }
+  #stage { position: static; padding: 0; }
+  .deck { position: static; width: 1280px; height: auto; transform: none !important; }
+  .slide { display: flex; position: relative; height: 720px; page-break-after: always; box-shadow: none; }
+  #hud { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="stage"><div class="deck" id="deck">
+
+<!-- 1 cover -->
+<section class="slide cover">
+<div class="frame"><span class="k">services</span>:
+  <span class="s">collector</span>:  <span class="c"># OTLP :4317 / :4318</span>
+  <span class="s">prometheus</span>: <span class="c"># metrics</span>
+  <span class="s">loki</span>:       <span class="c"># events (logs)</span>
+  <span class="s">clickhouse</span>: <span class="c"># SQL / 長期保管</span>
+  <span class="s">grafana</span>:    <span class="c"># dashboards</span>
+  <span class="s">caddy</span>:      <span class="c"># TLS + 入口</span></div>
+<p class="eyebrow">Architecture · docker compose</p>
+<h1>Claude Code 利用状況<br>収集サーバーの構成案</h1>
+<p class="lead">Claude Code が OTLP で送るメトリクスとイベントを、docker compose で立てたサーバーで受けて保存・可視化する。5 つの構成案を比べ、段階的に導入する進め方を提案する。</p>
+<div class="meta"><span>2026-10-12</span><span>対象：Claude Code v2.1.2xx 系の OTel 出力</span><span>taskapp OTEL-1</span></div>
+</section>
+
+<!-- 2 summary -->
+<section class="slide">
+<p class="eyebrow">Summary</p>
+<h2>結論：Collector を中心に置き、バックエンドを段階的に足す</h2>
+<div class="cols cols-52">
+  <div class="stack">
+    <div class="panel pw">
+      <h3>推奨する進め方</h3>
+      <ol class="small">
+        <li><b>PoC</b>：案 C（<code>grafana/otel-lgtm</code> 1 コンテナ）で、データの中身とダッシュボードを試す。</li>
+        <li><b>本番の基本形</b>：案 B（Collector + Prometheus + Loki + Grafana）。前段に Caddy（TLS）を置き、Bearer トークンで認証する。</li>
+        <li><b>監査用</b>：案 A の file exporter を Collector に足し、JSONL も残す（1 行の追加で済む）。</li>
+        <li><b>長期分析</b>：人数が増えた、または人事・組織データと結合したくなったら、案 D（ClickHouse）を追加する。</li>
+      </ol>
+    </div>
+    <div class="callout">どの案でも <b>Claude Code → OTel Collector</b> は同じ。保存先は Collector の exporter を足すか差し替えるだけなので、<b>クライアント設定（managed settings）は最初の 1 回だけ配ればよい</b>。</div>
+  </div>
+  <div class="stack">
+    <div class="panel ai">
+      <h3>サーバー側で決めること</h3>
+      <ul class="small">
+        <li>入口：TLS 終端と認証（Bearer / mTLS）</li>
+        <li>プロトコル：<code>http/protobuf</code> を推奨（トークン更新スクリプトが使える）</li>
+        <li>メトリクスの集計方式：クライアントは既定の delta のまま、Prometheus 向けには Collector で cumulative に変換</li>
+        <li>機密度：<code>OTEL_LOG_TOOL_DETAILS</code> などの詳細データを受けるか、受けるなら Collector で何を消すか</li>
+        <li>保持期間：メトリクス・イベント・監査ログそれぞれ</li>
+        <li>カーディナリティ：<code>session.id</code> をメトリクスに載せるか</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<p class="src">クライアント側の設定・属性・イベントの詳細は既存資料「Claude Code × OpenTelemetry — 利用状況モニタリング」を参照。本資料はサーバー側の設計に絞る。</p>
+</section>
+
+<!-- 3 requirements -->
+<section class="slide">
+<p class="eyebrow">1. 前提</p>
+<h2>サーバーが受けるもの：3 つのシグナル</h2>
+<div class="cols cols-3">
+  <div class="panel pw">
+    <h3>メトリクス <span class="tag">metrics</span></h3>
+    <p class="small">8 種のカウンター。セッション数、コード行数、PR・コミット数、コスト、トークン、編集ツールの許可判断、アクティブ時間。</p>
+    <p class="small muted" style="margin-top:6px">既定の送信間隔 60 秒。集計方式は既定で <b>delta</b>。</p>
+    <p class="small" style="margin-top:6px"><b>置き場所の候補</b>：Prometheus / Mimir / ClickHouse</p>
+  </div>
+  <div class="panel ai">
+    <h3>イベント <span class="tag ai">logs</span></h3>
+    <p class="small">1 件ずつの出来事。<code>user_prompt</code>、<code>api_request</code>（<code>cost_usd</code> 付き）、<code>tool_decision</code> と <code>tool_result</code>、<code>skill_activated</code> など 20 種以上。</p>
+    <p class="small muted" style="margin-top:6px">既定の送信間隔 5 秒。<code>claude -p</code> 1 回で約 50 件出た実測あり。</p>
+    <p class="small" style="margin-top:6px"><b>置き場所の候補</b>：Loki / ClickHouse / JSONL ファイル</p>
+  </div>
+  <div class="panel violet">
+    <h3>トレース <span class="tag violet">traces · beta</span></h3>
+    <p class="small"><code>interaction</code> → <code>llm_request</code> / <code>tool</code> のスパン。待ち時間の内訳が分かる。</p>
+    <p class="small muted" style="margin-top:6px">有効化には <code>CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1</code> が必要。</p>
+    <p class="small" style="margin-top:6px"><b>置き場所の候補</b>：Tempo / ClickHouse。<b>初期は対象外</b>にして、受け口だけ用意しておく。</p>
+  </div>
+</div>
+<div class="panel">
+  <h3>用途ごとに必要なシグナル</h3>
+  <table class="tight small">
+    <tr><th>用途</th><th>主に使うシグナル</th><th>ストレージに求めること</th></tr>
+    <tr><td>コスト・トークンのダッシュボード</td><td>メトリクス（または <code>api_request</code> イベント）</td><td>時系列の集計が速い</td></tr>
+    <tr><td>利用実態（誰が・どの repo で・どの Skill を）</td><td>イベント</td><td>属性で絞り込み・集計できる</td></tr>
+    <tr><td>監査（どんなコマンドを実行したか）</td><td>イベント（<code>tool_result</code> + <code>OTEL_LOG_TOOL_DETAILS</code>）</td><td>改ざんされにくく、長く残る</td></tr>
+    <tr><td>月次レポート・人事データとの結合</td><td>イベント + メトリクス</td><td>SQL で JOIN できる、年単位で保持</td></tr>
+  </table>
+</div>
+<p class="src">出典 code.claude.com/docs/ja/monitoring-usage ・既存資料（実測値）</p>
+</section>
+
+<!-- 4 references map -->
+<section class="slide">
+<p class="eyebrow">1. 前提</p>
+<h2>参考事例の構成は 4 つの型に分かれる</h2>
+<table class="small">
+  <tr><th style="width:17%">事例</th><th style="width:22%">Collector の置き方</th><th style="width:25%">保存先 / 可視化</th><th>特徴・教訓</th><th style="width:7%">対応案</th></tr>
+  <tr><td><b>クラスメソッド</b><br><span class="xs muted">2026-05</span></td><td>podman 単体、localhost のみ</td><td>JSONL ファイル（file exporter）/ <code>jq</code></td><td>監査ログが目的。<code>tool_parameters</code> にコマンド全文が入る。ローテーション後の保持期間と改ざん対策は未設計。</td><td><span class="tag">A</span></td></tr>
+  <tr><td><b>Qiita @ysit</b><br><span class="xs muted">2026-03</span></td><td>docker compose</td><td>Prometheus（scrape :8889）/ Grafana。ログは debug 出力のみ</td><td><code>metric_expiration: 180m</code>（間欠的な利用に合わせる）。大規模では <code>session.id</code> を外す。イメージが <code>latest</code> のまま。</td><td><span class="tag">B</span></td></tr>
+  <tr><td><b>FLINTERS</b><br><span class="xs muted">2026-04</span></td><td>docker compose（ローカルのデモ）</td><td>Prometheus + Loki / Grafana</td><td>ログを Loki に入れ、<code>prompt.id</code> で 1 回のやり取りを追える。詳細ログは機密レベルの方針を先に決める。</td><td><span class="tag">B</span></td></tr>
+  <tr><td><b>ZOZO</b><br><span class="xs muted">2026-03</span></td><td>Cloud Run（LB + 独自ドメイン + bearertokenauth）</td><td>Cloud Logging（10 年保持）→ BigQuery / SQL</td><td>MDM で managed settings を配布。<code>transform</code> で resource 属性をログ属性にコピー。組織データと JOIN して分析。</td><td><span class="tag">D</span></td></tr>
+</table>
+<div class="cols cols-2" style="flex:none">
+  <div class="callout ai"><b>共通点</b>：どの事例も「Claude Code → OTLP → Collector → 保存先」。違うのは保存先と可視化だけ。</div>
+  <div class="callout"><b>docker compose での再現</b>：ZOZO の BigQuery は <b>ClickHouse</b> に置き換えると、同じ「SQL で長期分析」がオンプレで作れる。</div>
+</div>
+<p class="src">出典 dev.classmethod.jp ・ qiita.com/ysit ・ zenn.dev/flinters_blog ・ techblog.zozo.com</p>
+</section>
+
+<!-- 5 logical architecture -->
+<section class="slide">
+<p class="eyebrow">2. 全体像</p>
+<h2>論理アーキテクチャ：5 つの層</h2>
+<div class="arch" style="flex:1">
+  <div class="col" style="width:190px">
+    <div class="box client"><div class="t">Claude Code</div>CLI / IDE / Desktop / SDK<div class="p">managed-settings.json<br>で設定を配布</div></div>
+    <div class="box client dashed"><div class="t" style="font-size:13px">クラウドセッション</div><span class="xs">server-managed settings で設定</span></div>
+  </div>
+  <div class="arr"><b>→</b>OTLP<br>https</div>
+  <div class="col" style="width:170px">
+    <div class="box edge"><div class="t">① 入口</div>Caddy / Traefik<div class="p">TLS 終端<br>:443 → collector:4318</div></div>
+  </div>
+  <div class="arr"><b>→</b></div>
+  <div class="col" style="width:220px">
+    <div class="box col-otel"><div class="t">② OTel Collector</div>
+      <span class="xs">contrib イメージ</span>
+      <ul class="xs" style="margin-top:4px">
+        <li>受信：otlp（grpc / http）</li>
+        <li>認証：bearertokenauth</li>
+        <li>加工：memory_limiter / transform / redaction / batch</li>
+        <li>振り分け：シグナル別に exporter</li>
+      </ul></div>
+  </div>
+  <div class="arr"><b>→</b></div>
+  <div class="col" style="width:200px">
+    <div class="box store"><div class="t">③ 保存</div>
+      <span class="xs">metrics → Prometheus<br>logs → Loki<br>全部 → ClickHouse<br>監査 → JSONL</span></div>
+  </div>
+  <div class="arr"><b>→</b></div>
+  <div class="col" style="width:170px">
+    <div class="box viz"><div class="t">④ 可視化・分析</div><span class="xs">Grafana<br>SQL / jq<br>アラート</span></div>
+  </div>
+</div>
+<div class="cols cols-3" style="flex:none">
+  <div class="panel amber small"><b>⑤ 運用</b>：バックアップ、保持期間、イメージのバージョン固定、ヘルスチェック、Collector 自身のメトリクス（:8888）の監視。</div>
+  <div class="panel small"><b>配置</b>：すべて 1 台の docker ホストに compose で載せる。外に開くのは入口（:443）だけ。他は compose 内のネットワークに閉じる。</div>
+  <div class="panel small"><b>拡張</b>：③ と ④ の組み合わせが「構成案」。① と ② は全案で共通にして、後から差し替えやすくする。</div>
+</div>
+</section>
+
+<!-- 6 options overview -->
+<section class="slide">
+<p class="eyebrow">3. 構成案</p>
+<h2>5 つの構成案</h2>
+<div class="opt">
+  <div class="panel amber">
+    <div class="letter" style="color:var(--amber)">A</div>
+    <h3>最小・監査ログ</h3>
+    <p class="compose" style="font-size:11px"><span>collector</span></p>
+    <p>Collector 1 つで JSONL ファイルに書くだけ。<code>jq</code> で調べる。</p>
+    <p class="muted xs" style="margin-top:auto">クラスメソッド型</p>
+  </div>
+  <div class="panel pw">
+    <div class="letter" style="color:var(--pw)">B</div>
+    <h3>Grafana スタック</h3>
+    <p class="compose" style="font-size:11px"><span>collector</span><span>prometheus</span><span>loki</span><span>grafana</span></p>
+    <p>メトリクスは Prometheus、イベントは Loki、可視化は Grafana。</p>
+    <p class="muted xs" style="margin-top:auto">FLINTERS / Qiita 型</p>
+  </div>
+  <div class="panel green">
+    <div class="letter" style="color:var(--green)">C</div>
+    <h3>オールインワン</h3>
+    <p class="compose" style="font-size:11px"><span>otel-lgtm</span></p>
+    <p>Grafana 公式の 1 コンテナ版（Collector + Prometheus + Loki + Tempo + Grafana）。</p>
+    <p class="muted xs" style="margin-top:auto">PoC・個人向け</p>
+  </div>
+  <div class="panel ai">
+    <div class="letter" style="color:var(--ai)">D</div>
+    <h3>SQL 分析・長期保管</h3>
+    <p class="compose" style="font-size:11px"><span>collector</span><span>clickhouse</span><span>grafana</span></p>
+    <p>全シグナルを ClickHouse に入れ、SQL で分析・JOIN する。</p>
+    <p class="muted xs" style="margin-top:auto">ZOZO（BigQuery）のオンプレ版</p>
+  </div>
+  <div class="panel violet">
+    <div class="letter" style="color:var(--violet)">E</div>
+    <h3>OSS 統合製品</h3>
+    <p class="compose" style="font-size:11px"><span>signoz</span><span>or</span><span>openobserve</span></p>
+    <p>OTel ネイティブの監視製品を、公式の compose で立てる。</p>
+    <p class="muted xs" style="margin-top:auto">UI 込みで早いが製品に依存</p>
+  </div>
+</div>
+<div class="callout ai">A・B・D は排他ではない。Collector の 1 つのパイプラインに exporter を複数並べると、<b>同じデータを複数の保存先に同時に送れる</b>（例：B + A の JSONL、B + D）。</div>
+</section>
+
+<!-- 7 option A -->
+<section class="slide">
+<p class="eyebrow">3. 構成案 A</p>
+<h2>案 A：最小構成 — Collector + JSONL ファイル</h2>
+<div class="arch">
+  <div class="box client" style="width:170px"><div class="t">Claude Code</div><span class="xs">tool details 有効</span></div>
+  <div class="arr"><b>→</b>OTLP</div>
+  <div class="box col-otel" style="width:240px"><div class="t">collector</div><span class="xs">otlp → batch → <b>file</b></span><div class="p">:4317 / :4318 / :13133</div></div>
+  <div class="arr"><b>→</b></div>
+  <div class="box store" style="width:260px"><div class="t">./data/audit.jsonl</div><span class="xs">100 MB でローテーション、世代数と日数で削除</span></div>
+  <div class="arr"><b>→</b></div>
+  <div class="box viz" style="width:160px"><div class="t">jq / grep</div><span class="xs">または SIEM に取り込み</span></div>
+</div>
+<div class="cols cols-52">
+<pre class="term sm"><span class="c"># otel-collector.yaml（案 A の要点）</span>
+<span class="k">exporters</span>:
+  <span class="k">file/audit</span>:
+    <span class="k">path</span>: <span class="s">/data/audit.jsonl</span>
+    <span class="k">format</span>: <span class="s">json</span>
+    <span class="k">rotation</span>:
+      <span class="k">max_megabytes</span>: <span class="n">100</span>
+      <span class="k">max_days</span>: <span class="n">365</span>      <span class="c"># 記事にはなかった保持期間</span>
+      <span class="k">max_backups</span>: <span class="n">500</span>
+      <span class="k">localtime</span>: <span class="n">true</span>
+<span class="k">service</span>:
+  <span class="k">pipelines</span>:
+    <span class="k">logs</span>:    { <span class="k">receivers</span>: [otlp], <span class="k">processors</span>: [memory_limiter, batch], <span class="k">exporters</span>: [file/audit] }
+    <span class="k">metrics</span>: { <span class="k">receivers</span>: [otlp], <span class="k">processors</span>: [memory_limiter, batch], <span class="k">exporters</span>: [file/audit] }
+
+<span class="c"># 調べ方：あるセッションで実行された Bash コマンド</span>
+jq -c <span class="s">'.resourceLogs[].scopeLogs[].logRecords[]
+  | select(.attributes[]? | .key=="tool_name" and .value.stringValue=="Bash")'</span> audit.jsonl</pre>
+  <div class="stack">
+    <div class="panel">
+      <ul class="pm small">
+        <li class="good">コンテナ 1 つ、メモリ 100 MB 程度。数分で立つ。</li>
+        <li class="good">全属性がそのまま残る。後から別のストレージに読み込み直せる（生データの保管庫になる）。</li>
+        <li class="good">監査用途では「加工しない原本」があること自体に価値がある。</li>
+        <li class="bad">ダッシュボードがない。集計は毎回 <code>jq</code> を書く。</li>
+        <li class="bad">ファイルが大きくなると検索が遅い。</li>
+        <li class="bad">改ざん対策は別に必要（追記専用の権限、定期的に外部へ退避、ハッシュの記録）。</li>
+      </ul>
+    </div>
+    <div class="callout small"><b>向いている場面</b>：個人・少人数での監査、案 B / D の「並走する原本」。</div>
+  </div>
+</div>
+<p class="src">出典 クラスメソッド（Collector + file exporter、tool_parameters で監査）</p>
+</section>
+
+<!-- 8 option B -->
+<section class="slide">
+<p class="eyebrow">3. 構成案 B</p>
+<h2>案 B：Grafana スタック — Prometheus + Loki + Grafana</h2>
+<div class="arch">
+  <div class="box client" style="width:150px"><div class="t">Claude Code</div></div>
+  <div class="arr"><b>→</b>https</div>
+  <div class="box edge" style="width:110px"><div class="t">caddy</div><div class="p">:443</div></div>
+  <div class="arr"><b>→</b></div>
+  <div class="box col-otel" style="width:200px"><div class="t">collector</div><span class="xs">metrics と logs を振り分け</span></div>
+  <div class="col">
+    <div class="arch"><div class="arr"><b>→</b>OTLP push</div><div class="box store" style="width:220px"><div class="t">prometheus</div><span class="xs">/api/v1/otlp で受信（v3 以降）</span></div></div>
+    <div class="arch"><div class="arr"><b>→</b>OTLP push</div><div class="box store" style="width:220px"><div class="t">loki</div><span class="xs">/otlp で受信（v3 以降）</span></div></div>
+  </div>
+  <div class="arr"><b>→</b></div>
+  <div class="box viz" style="width:120px"><div class="t">grafana</div><div class="p">:3000</div></div>
+</div>
+<div class="cols cols-2">
+  <div class="stack">
+    <div class="panel">
+      <h3>メトリクスの渡し方は 2 通り</h3>
+      <table class="tight xs">
+        <tr><th></th><th>① scrape（記事の方式）</th><th>② OTLP push（推奨）</th></tr>
+        <tr><td>Collector</td><td><code>prometheus</code> exporter が :8889 で公開</td><td><code>otlp_http</code> exporter で送る</td></tr>
+        <tr><td>Prometheus</td><td>15 秒ごとに scrape</td><td><code>--web.enable-otlp-receiver</code></td></tr>
+        <tr><td>注意</td><td><code>metric_expiration</code> を長めに（記事は 180m）</td><td>delta を受けられないので Collector の <code>delta_to_cumulative</code> で変換</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>イベントは Loki のネイティブ OTLP 受信へ</h3>
+      <p class="xs">古い <code>loki</code> exporter ではなく <code>otlp_http</code> で <code>http://loki:3100/otlp</code> に送る。<code>service.name</code> など一部だけがラベルになり、<code>user.email</code>・<code>event.name</code> などは structured metadata として LogQL で絞り込む。</p>
+    </div>
+  </div>
+  <div class="stack">
+    <div class="panel">
+      <ul class="pm small">
+        <li class="good">参考記事が多く、ダッシュボードの例がそのまま使える。</li>
+        <li class="good">メトリクスとログを Grafana の 1 画面で並べられる。<code>prompt.id</code> でやり取りを追える（FLINTERS のデモ）。</li>
+        <li class="good">アラート（コストの急増など）を Grafana / Prometheus で作れる。</li>
+        <li class="bad">コンテナ 4〜5 個。メモリは 2 GB 程度を見込む。</li>
+        <li class="bad">PromQL / LogQL は JOIN が苦手。「部署別の月次コスト」のような集計は工夫が必要。</li>
+        <li class="bad">ラベルの数（カーディナリティ）を気にする必要がある。</li>
+      </ul>
+    </div>
+    <div class="callout green small"><b>向いている場面</b>：チーム〜数十名。リアルタイムのダッシュボードとアラートが主な目的。</div>
+  </div>
+</div>
+<p class="src">出典 Qiita @ysit（scrape 方式・metric_expiration）・FLINTERS（Prometheus + Loki + Grafana）</p>
+</section>
+
+<!-- 9 option B compose -->
+<section class="slide">
+<p class="eyebrow">3. 構成案 B</p>
+<h2>案 B の compose と Collector 設定（要点）</h2>
+<div class="cols cols-2">
+<pre class="term xs"><span class="c"># compose.yaml（抜粋。バージョンは .env で固定）</span>
+<span class="k">services</span>:
+  <span class="k">caddy</span>:
+    <span class="k">image</span>: <span class="s">caddy:${CADDY_VERSION}</span>
+    <span class="k">ports</span>: [<span class="s">"443:443"</span>]
+    <span class="k">volumes</span>: [<span class="s">./caddy/Caddyfile:/etc/caddy/Caddyfile:ro</span>]
+  <span class="k">collector</span>:
+    <span class="k">image</span>: <span class="s">otel/opentelemetry-collector-contrib:${OTELCOL_VERSION}</span>
+    <span class="k">command</span>: [<span class="s">"--config=/etc/otelcol/config.yaml"</span>]
+    <span class="k">environment</span>:
+      <span class="k">OTEL_INGEST_TOKEN</span>: <span class="s">${OTEL_INGEST_TOKEN}</span>
+    <span class="k">volumes</span>: [<span class="s">./collector/config.yaml:/etc/otelcol/config.yaml:ro</span>]
+    <span class="k">depends_on</span>: [prometheus, loki]  <span class="c"># push 先が先に起動</span>
+  <span class="k">prometheus</span>:
+    <span class="k">image</span>: <span class="s">prom/prometheus:${PROMETHEUS_VERSION}</span>
+    <span class="k">command</span>:
+      - <span class="s">--config.file=/etc/prometheus/prometheus.yml</span>
+      - <span class="s">--web.enable-otlp-receiver</span>
+      - <span class="s">--storage.tsdb.retention.time=400d</span>
+    <span class="k">volumes</span>: [<span class="s">prom-data:/prometheus</span>, ...]
+  <span class="k">loki</span>:
+    <span class="k">image</span>: <span class="s">grafana/loki:${LOKI_VERSION}</span>
+    <span class="k">volumes</span>: [<span class="s">loki-data:/loki</span>, ...]
+  <span class="k">grafana</span>:
+    <span class="k">image</span>: <span class="s">grafana/grafana:${GRAFANA_VERSION}</span>
+    <span class="k">environment</span>:
+      <span class="k">GF_SECURITY_ADMIN_PASSWORD__FILE</span>: <span class="s">/run/secrets/gf_admin</span>
+    <span class="k">volumes</span>: [<span class="s">./grafana/provisioning:/etc/grafana/provisioning:ro</span>]
+<span class="k">volumes</span>: { <span class="k">prom-data</span>: {}, <span class="k">loki-data</span>: {}, <span class="k">grafana-data</span>: {} }</pre>
+<pre class="term xs"><span class="c"># collector/config.yaml（抜粋）</span>
+<span class="k">extensions</span>:
+  <span class="k">health_check</span>: {}
+  <span class="k">bearertokenauth</span>:
+    <span class="k">token</span>: <span class="s">${env:OTEL_INGEST_TOKEN}</span>
+<span class="k">receivers</span>:
+  <span class="k">otlp</span>:
+    <span class="k">protocols</span>:
+      <span class="k">http</span>:
+        <span class="k">endpoint</span>: <span class="s">0.0.0.0:4318</span>
+        <span class="k">auth</span>: { <span class="k">authenticator</span>: bearertokenauth }
+<span class="k">processors</span>:
+  <span class="k">memory_limiter</span>: { <span class="k">check_interval</span>: 5s, <span class="k">limit_mib</span>: <span class="n">512</span> }
+  <span class="k">batch</span>: {}
+<span class="k">exporters</span>:
+  <span class="k">otlp_http/prometheus</span>:
+    <span class="k">endpoint</span>: <span class="s">http://prometheus:9090/api/v1/otlp</span>
+  <span class="k">otlp_http/loki</span>:
+    <span class="k">endpoint</span>: <span class="s">http://loki:3100/otlp</span>
+<span class="k">service</span>:
+  <span class="k">extensions</span>: [health_check, bearertokenauth]
+  <span class="k">pipelines</span>:
+    <span class="k">metrics</span>:
+      <span class="k">receivers</span>: [otlp]
+      <span class="k">processors</span>: [memory_limiter, batch]
+      <span class="k">exporters</span>: [otlp_http/prometheus]
+    <span class="k">logs</span>:
+      <span class="k">receivers</span>: [otlp]
+      <span class="k">processors</span>: [memory_limiter, transform, batch]
+      <span class="k">exporters</span>: [otlp_http/loki]  <span class="c"># + file/audit で案 A 併用</span></pre>
+</div>
+<p class="src">Prometheus の OTLP 受信フラグとパス、Loki の /otlp は v3 系の仕様。採用するバージョンのドキュメントで最終確認すること。</p>
+</section>
+
+<!-- 10 option B queries -->
+<section class="slide">
+<p class="eyebrow">3. 構成案 B</p>
+<h2>案 B のダッシュボード：PromQL と LogQL の例</h2>
+<div class="cols cols-2">
+  <div class="stack">
+    <div class="panel pw"><h3>メトリクス（Prometheus）</h3>
+<pre class="term sm"><span class="c"># モデル別のコスト（直近 24h）</span>
+sum by (model) (increase(claude_code_cost_usage_USD_total[24h] anchored))
+
+<span class="c"># 利用者別のコスト（今月）</span>
+sum by (user_email) (increase(claude_code_cost_usage_USD_total[30d] anchored))
+
+<span class="c"># トークン種別</span>
+sum by (type) (rate(claude_code_token_usage_tokens_total[1h]))
+
+<span class="c"># 人の操作時間 vs CLI の稼働時間</span>
+sum by (type) (increase(claude_code_active_time_seconds_total[1d] anchored))</pre>
+    </div>
+    <p class="xs muted"><code>anchored</code>（外挿しない increase）と、開始時刻に 0 を入れる機能は Prometheus 3.x の実験的機能（<code>--enable-feature=promql-extended-range-selectors,created-timestamp-zero-ingestion</code>）。短いセッションはカウンターを 1 回しか送らないため、両方ないと値が出ないか膨らむ（実測）。</p>
+  </div>
+  <div class="stack">
+    <div class="panel ai"><h3>イベント（Loki）</h3>
+<pre class="term sm"><span class="c"># Skill の発動回数：利用者 × リポジトリ × Skill</span>
+sum by (user_email, vcs_repository_name, skill_name) (
+  count_over_time(
+    {service_name="claude-code"}
+      | event_name="skill_activated" [7d]))
+
+<span class="c"># 拒否されたツール実行</span>
+{service_name="claude-code"}
+  | event_name="tool_decision" | decision="reject"
+
+<span class="c"># 1 回のやり取りをたどる</span>
+{service_name="claude-code"} | prompt_id="5d3b856f-..."</pre>
+    </div>
+    <div class="callout small">Grafana のダッシュボードとデータソースは <code>grafana/provisioning/</code> にファイルで置き、リポジトリで管理する（手で作った画面は消えやすい）。</div>
+  </div>
+</div>
+<p class="src">名前の変換例は Qiita @ysit（claude_code_cost_usage_USD_total）。Loki の structured metadata ではドットがアンダースコアに置き換わる。</p>
+</section>
+
+<!-- 11 option C -->
+<section class="slide">
+<p class="eyebrow">3. 構成案 C</p>
+<h2>案 C：オールインワン — grafana/otel-lgtm</h2>
+<div class="cols cols-52">
+  <div class="stack">
+    <div class="arch">
+      <div class="box client" style="width:150px"><div class="t">Claude Code</div></div>
+      <div class="arr"><b>→</b>:4317<br>:4318</div>
+      <div class="box viz" style="flex:1"><div class="t">otel-lgtm（1 コンテナ）</div>
+        <span class="xs">OTel Collector ＋ Prometheus ＋ Loki ＋ Tempo ＋ Grafana（:3000）。データソースは設定済み。</span></div>
+    </div>
+<pre class="term"><span class="c"># compose.yaml（これだけ）</span>
+<span class="k">services</span>:
+  <span class="k">lgtm</span>:
+    <span class="k">image</span>: <span class="s">grafana/otel-lgtm:${LGTM_VERSION}</span>
+    <span class="k">ports</span>:
+      - <span class="s">"3000:3000"</span>   <span class="c"># Grafana</span>
+      - <span class="s">"4317:4317"</span>   <span class="c"># OTLP gRPC</span>
+      - <span class="s">"4318:4318"</span>   <span class="c"># OTLP HTTP</span>
+    <span class="k">volumes</span>:
+      - <span class="s">lgtm-data:/data</span>
+<span class="k">volumes</span>: { <span class="k">lgtm-data</span>: {} }</pre>
+    <div class="callout green small">ローカルで <code>docker compose up</code> → 自分の <code>~/.claude/settings.json</code> の <code>env</code> を <code>http://localhost:4318</code> に向ける → Grafana の Explore で中身を見る。<b>半日で「何が取れるか」が分かる</b>。</div>
+  </div>
+  <div class="stack">
+    <div class="panel">
+      <ul class="pm small">
+        <li class="good">一番早い。設定ファイルを書かずに 3 シグナル（トレースも）を受けられる。</li>
+        <li class="good">ダッシュボードの試作に向く。作ったダッシュボードの JSON は案 B にそのまま移せる（同じ Prometheus / Loki）。</li>
+        <li class="bad">開発・デモ向けのイメージで、本番運用は想定されていない。</li>
+        <li class="bad">中の各コンポーネントの細かい設定（保持期間・認証）を変えにくい。</li>
+        <li class="bad">認証がない。社内ネットワークに開く場合は前段に入口を置くか、案 B に移る。</li>
+      </ul>
+    </div>
+    <div class="callout small"><b>向いている場面</b>：PoC、個人の可視化、ダッシュボードの試作。</div>
+  </div>
+</div>
+</section>
+
+<!-- 12 option D -->
+<section class="slide">
+<p class="eyebrow">3. 構成案 D</p>
+<h2>案 D：SQL 分析・長期保管 — ClickHouse + Grafana</h2>
+<div class="arch">
+  <div class="box client" style="width:150px"><div class="t">Claude Code</div></div>
+  <div class="arr"><b>→</b>https</div>
+  <div class="box edge" style="width:100px"><div class="t">caddy</div></div>
+  <div class="arr"><b>→</b></div>
+  <div class="box col-otel" style="width:220px"><div class="t">collector</div><span class="xs"><b>clickhouse</b> exporter（contrib）。テーブルを自動作成し、TTL を設定</span></div>
+  <div class="arr"><b>→</b></div>
+  <div class="box store" style="width:240px"><div class="t">clickhouse</div><span class="xs">otel_logs / otel_metrics_sum / …<br>列指向で圧縮が効く</span></div>
+  <div class="arr"><b>→</b></div>
+  <div class="box viz" style="width:180px"><div class="t">grafana</div><span class="xs">ClickHouse プラグイン<br>＋ SQL クライアント</span></div>
+</div>
+<div class="cols cols-2">
+  <div class="stack">
+<pre class="term sm"><span class="c"># collector/config.yaml（案 D の exporter）</span>
+<span class="k">exporters</span>:
+  <span class="k">clickhouse</span>:
+    <span class="k">endpoint</span>: <span class="s">tcp://clickhouse:9000</span>
+    <span class="k">database</span>: <span class="s">otel</span>
+    <span class="k">username</span>: <span class="s">${env:CH_USER}</span>
+    <span class="k">password</span>: <span class="s">${env:CH_PASSWORD}</span>
+    <span class="k">ttl</span>: <span class="s">17520h</span>          <span class="c"># 2 年</span>
+    <span class="k">create_schema</span>: <span class="n">true</span>
+    <span class="k">logs_table_name</span>: <span class="s">otel_logs</span>
+<span class="k">service</span>:
+  <span class="k">pipelines</span>:
+    <span class="k">logs</span>:    { ..., <span class="k">exporters</span>: [clickhouse] }
+    <span class="k">metrics</span>: { ..., <span class="k">exporters</span>: [clickhouse] }</pre>
+    <div class="callout ai small"><b>コストは <code>api_request</code> イベントの <code>cost_usd</code> を足す</b>のが簡単。1 件 = 1 回の API 要求なので、delta / cumulative の違いを気にしなくてよい。</div>
+  </div>
+  <div class="stack">
+    <div class="panel">
+      <ul class="pm small">
+        <li class="good">SQL で何でも集計できる。組織・人事データのテーブルと <code>JOIN</code> できる（ZOZO の kintone 連携に相当）。</li>
+        <li class="good">高圧縮で、イベントを年単位で持てる。TTL で自動削除。</li>
+        <li class="good">高カーディナリティ（<code>session.id</code>、<code>prompt.id</code>）を気にせず持てる。</li>
+        <li class="bad">ClickHouse の運用知識が要る。メモリは最低 2〜4 GB を見込む。</li>
+        <li class="bad">clickhouse exporter は contrib のコンポーネントで、メトリクスはまだ成熟度が低い（採用バージョンで stability を確認）。</li>
+        <li class="bad">ダッシュボードは SQL で 1 から書く。既製の例が少ない。</li>
+      </ul>
+    </div>
+    <div class="callout green small"><b>向いている場面</b>：数十〜数百名。月次レポート、部署別の費用配賦、監査の長期保管。</div>
+  </div>
+</div>
+<p class="src">出典 ZOZO（Cloud Logging → BigQuery、10 年保持、組織データとの結合）</p>
+</section>
+
+<!-- 13 option D SQL -->
+<section class="slide">
+<p class="eyebrow">3. 構成案 D</p>
+<h2>案 D の分析クエリ例</h2>
+<div class="cols cols-2">
+<pre class="term sm"><span class="c">-- 利用者 × 月 のコストとリクエスト数</span>
+<span class="k">SELECT</span>
+  toStartOfMonth(Timestamp)               <span class="k">AS</span> month,
+  LogAttributes[<span class="s">'user.email'</span>]              <span class="k">AS</span> user,
+  round(sum(toFloat64OrZero(
+    LogAttributes[<span class="s">'cost_usd'</span>])), <span class="n">2</span>)        <span class="k">AS</span> cost_usd,
+  count()                                  <span class="k">AS</span> requests
+<span class="k">FROM</span> otel.otel_logs
+<span class="k">WHERE</span> LogAttributes[<span class="s">'event.name'</span>] = <span class="s">'api_request'</span>
+<span class="k">GROUP BY</span> month, user
+<span class="k">ORDER BY</span> month, cost_usd <span class="k">DESC</span>;
+
+<span class="c">-- 部署別（組織マスタと JOIN）</span>
+<span class="k">SELECT</span> o.department, round(sum(toFloat64OrZero(
+         l.LogAttributes[<span class="s">'cost_usd'</span>])), <span class="n">2</span>) <span class="k">AS</span> cost
+<span class="k">FROM</span> otel.otel_logs l
+<span class="k">JOIN</span> org.members o <span class="k">ON</span> o.email = l.LogAttributes[<span class="s">'user.email'</span>]
+<span class="k">WHERE</span> l.LogAttributes[<span class="s">'event.name'</span>] = <span class="s">'api_request'</span>
+  <span class="k">AND</span> l.Timestamp >= toStartOfMonth(now())
+<span class="k">GROUP BY</span> o.department;</pre>
+<pre class="term sm"><span class="c">-- Skill の発動：誰が × どの repo で × どの Skill を</span>
+<span class="k">SELECT</span>
+  LogAttributes[<span class="s">'user.email'</span>]           <span class="k">AS</span> user,
+  LogAttributes[<span class="s">'vcs.repository.name'</span>]  <span class="k">AS</span> repo,
+  LogAttributes[<span class="s">'skill.name'</span>]           <span class="k">AS</span> skill,
+  LogAttributes[<span class="s">'invocation_trigger'</span>]   <span class="k">AS</span> trigger,
+  count() <span class="k">AS</span> n
+<span class="k">FROM</span> otel.otel_logs
+<span class="k">WHERE</span> LogAttributes[<span class="s">'event.name'</span>] = <span class="s">'skill_activated'</span>
+<span class="k">GROUP BY</span> user, repo, skill, trigger
+<span class="k">ORDER BY</span> n <span class="k">DESC</span>;
+
+<span class="c">-- 監査：今週実行された Bash コマンド</span>
+<span class="k">SELECT</span> Timestamp, LogAttributes[<span class="s">'user.email'</span>],
+       LogAttributes[<span class="s">'tool_parameters'</span>]
+<span class="k">FROM</span> otel.otel_logs
+<span class="k">WHERE</span> LogAttributes[<span class="s">'event.name'</span>] = <span class="s">'tool_result'</span>
+  <span class="k">AND</span> LogAttributes[<span class="s">'tool_name'</span>] = <span class="s">'Bash'</span>
+  <span class="k">AND</span> Timestamp >= now() - <span class="k">INTERVAL</span> <span class="n">7</span> <span class="k">DAY</span>;</pre>
+</div>
+<div class="callout small">頻繁に使う属性（<code>user.email</code>、<code>event.name</code> など）は、ClickHouse のマテリアライズドビューで列に切り出すと速くなる。<code>vcs.*</code> はクライアントで <code>OTEL_METRICS_INCLUDE_REPOSITORY=true</code>、<code>tool_parameters</code> は <code>OTEL_LOG_TOOL_DETAILS=1</code> が前提。</div>
+</section>
+
+<!-- 14 option E -->
+<section class="slide">
+<p class="eyebrow">3. 構成案 E</p>
+<h2>案 E：OSS の統合監視製品を使う</h2>
+<div class="cols cols-2">
+  <div class="panel violet">
+    <h3>SigNoz</h3>
+    <p class="small">OTel ネイティブの APM。中身は OTel Collector ＋ ClickHouse ＋ 独自 UI。公式リポジトリに docker compose が同梱されている。</p>
+    <ul class="pm small" style="margin-top:8px">
+      <li class="good">ログ・メトリクス・トレースを 1 つの UI で検索できる。アラートもある。</li>
+      <li class="good">保存先が ClickHouse なので、案 D と同じく SQL も使える。</li>
+      <li class="bad">コンテナ数が多く、メモリは 4 GB 以上を見込む。</li>
+      <li class="bad">UI とスキーマが製品に依存。バージョンアップに追従が必要。</li>
+    </ul>
+  </div>
+  <div class="panel violet">
+    <h3>OpenObserve</h3>
+    <p class="small">単一バイナリの軽量な監視基盤。OTLP を直接受け、ローカルディスクかオブジェクトストレージに保存する。</p>
+    <ul class="pm small" style="margin-top:8px">
+      <li class="good">コンテナ 1 つで、ログ・メトリクス・トレースと UI がそろう。</li>
+      <li class="good">SQL ライクな検索ができる。保存の圧縮率が高い。</li>
+      <li class="bad">Grafana ほど情報が多くない。ダッシュボードの例を自作する必要がある。</li>
+      <li class="bad">ライセンス条件（AGPL など）を採用前に確認する。</li>
+    </ul>
+  </div>
+</div>
+<div class="callout small">
+  <b>判断のポイント</b>：既製の UI で「すぐに検索・アラートしたい」なら E。「Claude Code 専用のダッシュボードやレポートを作り込みたい」なら B / D の方が自由度が高い。どちらでも Collector を前段に置いておけば、後で乗り換えられる。
+</div>
+<p class="src">製品の構成・要件は各製品のドキュメントで最新を確認すること。</p>
+</section>
+
+<!-- 15 comparison -->
+<section class="slide">
+<p class="eyebrow">4. 比較</p>
+<h2>構成案の比較</h2>
+<table class="small">
+  <tr><th style="width:20%">観点</th><th class="c">A 最小</th><th class="c">B Grafana</th><th class="c">C LGTM</th><th class="c">D ClickHouse</th><th class="c">E 統合製品</th></tr>
+  <tr><td>構築の手間（少ないほど ●）</td><td class="c dots">●●●●●</td><td class="c dots">●●●<span class="off">●●</span></td><td class="c dots">●●●●●</td><td class="c dots">●●<span class="off">●●●</span></td><td class="c dots">●●●●<span class="off">●</span></td></tr>
+  <tr><td>ダッシュボード・可視化</td><td class="c dots">●<span class="off">●●●●</span></td><td class="c dots">●●●●●</td><td class="c dots">●●●●<span class="off">●</span></td><td class="c dots">●●●<span class="off">●●</span></td><td class="c dots">●●●●<span class="off">●</span></td></tr>
+  <tr><td>SQL・ad hoc 分析・JOIN</td><td class="c dots">●●<span class="off">●●●</span></td><td class="c dots">●●<span class="off">●●●</span></td><td class="c dots">●●<span class="off">●●●</span></td><td class="c dots">●●●●●</td><td class="c dots">●●●●<span class="off">●</span></td></tr>
+  <tr><td>長期保管（年単位）</td><td class="c dots">●●●●<span class="off">●</span></td><td class="c dots">●●●<span class="off">●●</span></td><td class="c dots">●<span class="off">●●●●</span></td><td class="c dots">●●●●●</td><td class="c dots">●●●●<span class="off">●</span></td></tr>
+  <tr><td>監査（原本の保全）</td><td class="c dots">●●●●●</td><td class="c dots">●●●<span class="off">●●</span></td><td class="c dots">●<span class="off">●●●●</span></td><td class="c dots">●●●●<span class="off">●</span></td><td class="c dots">●●●<span class="off">●●</span></td></tr>
+  <tr><td>高カーディナリティへの強さ</td><td class="c dots">●●●●●</td><td class="c dots">●●<span class="off">●●●</span></td><td class="c dots">●●<span class="off">●●●</span></td><td class="c dots">●●●●●</td><td class="c dots">●●●●<span class="off">●</span></td></tr>
+  <tr><td>運用の軽さ</td><td class="c dots">●●●●●</td><td class="c dots">●●●<span class="off">●●</span></td><td class="c dots">●●●●<span class="off">●</span></td><td class="c dots">●●<span class="off">●●●</span></td><td class="c dots">●●<span class="off">●●●</span></td></tr>
+  <tr><td>コンテナ数 / メモリ目安</td><td class="c">1 / 〜0.2 GB</td><td class="c">5 / 〜2 GB</td><td class="c">1 / 〜1.5 GB</td><td class="c">4 / 〜4 GB</td><td class="c">1〜8 / 1〜4 GB+</td></tr>
+  <tr><td>想定規模</td><td class="c">個人〜少人数</td><td class="c">〜数十名</td><td class="c">個人・PoC</td><td class="c">数十〜数百名</td><td class="c">〜数百名</td></tr>
+</table>
+<p class="xs muted">● の数は相対評価（本資料での判断）。メモリは小規模で動かすときの目安で、データ量に応じて増える。</p>
+</section>
+
+<!-- 16 roadmap -->
+<section class="slide">
+<p class="eyebrow">5. 推奨</p>
+<h2>推奨：段階的に導入する</h2>
+<div class="road">
+  <div class="panel green"><div class="no">Step 1</div><h3>PoC（案 C）</h3>
+    <p class="small">自分の端末だけ <code>~/.claude/settings.json</code> で送る。何が取れるか、どのダッシュボードが欲しいかを決める。</p>
+    <p class="xs muted" style="margin-top:6px">期間の目安：1〜2 日</p></div>
+  <div class="panel pw"><div class="no">Step 2</div><h3>本番の基本形（案 B）</h3>
+    <p class="small">Caddy + 認証付き Collector + Prometheus + Loki + Grafana。Step 1 のダッシュボードを provisioning に移す。</p>
+    <p class="xs muted" style="margin-top:6px">期間の目安：1 週間</p></div>
+  <div class="panel amber"><div class="no">Step 3</div><h3>監査の原本（＋案 A）</h3>
+    <p class="small">logs パイプラインに <code>file/audit</code> を追加。日次で別ホストへ退避し、ハッシュを記録する。</p>
+    <p class="xs muted" style="margin-top:6px">詳細ログを受ける方針が決まってから</p></div>
+  <div class="panel ai"><div class="no">Step 4</div><h3>長期分析（＋案 D）</h3>
+    <p class="small">利用者が増えた・月次レポートや組織データとの結合が必要になったら ClickHouse を追加。必要なら Loki を縮退させる。</p>
+    <p class="xs muted" style="margin-top:6px">目安：数十名を超えたら</p></div>
+</div>
+<div class="cols cols-2" style="flex:none">
+  <div class="panel">
+    <h3>この順にする理由</h3>
+    <ul class="small">
+      <li>Collector が全案の共通部品なので、<b>後から exporter を足すだけ</b>で拡張できる。手戻りがない。</li>
+      <li>クライアント設定（送信先・トークン）は Step 2 で 1 回配れば、Step 3・4 で変えなくてよい。</li>
+      <li>最初から ClickHouse にすると、何を分析したいか決まる前に運用負荷を抱える。</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>Step 2 の時点で決めておく</h3>
+    <ul class="small">
+      <li>受けるデータの範囲（<code>OTEL_LOG_TOOL_DETAILS</code> などの詳細ログを受けるか）</li>
+      <li>保持期間（メトリクス 13 か月、イベント 90 日、監査 1 年 など）</li>
+      <li>閲覧できる人（Grafana の権限、個人単位のコストを誰が見るか）</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- 17 ingress auth -->
+<section class="slide">
+<p class="eyebrow">6. 共通設計</p>
+<h2>入口と認証：TLS は Caddy、認証は Collector で</h2>
+<div class="cols cols-2">
+  <div class="stack">
+<pre class="term sm"><span class="c"># caddy/Caddyfile</span>
+otel.example.internal {
+    <span class="c"># 社内 CA または ACME で証明書</span>
+    tls /certs/otel.crt /certs/otel.key
+    reverse_proxy collector:4318
+}
+grafana.example.internal {
+    reverse_proxy grafana:3000
+}</pre>
+    <div class="panel">
+      <h3>クライアント側の送信設定</h3>
+<pre class="term sm">{
+  <span class="k">"env"</span>: {
+    <span class="k">"CLAUDE_CODE_ENABLE_TELEMETRY"</span>: <span class="s">"1"</span>,
+    <span class="k">"OTEL_METRICS_EXPORTER"</span>: <span class="s">"otlp"</span>,
+    <span class="k">"OTEL_LOGS_EXPORTER"</span>: <span class="s">"otlp"</span>,
+    <span class="k">"OTEL_EXPORTER_OTLP_PROTOCOL"</span>: <span class="s">"http/protobuf"</span>,
+    <span class="k">"OTEL_EXPORTER_OTLP_ENDPOINT"</span>: <span class="s">"https://otel.example.internal"</span>,
+    <span class="k">"OTEL_EXPORTER_OTLP_HEADERS"</span>: <span class="s">"Authorization=Bearer ${TOKEN}"</span>
+  }
+}</pre>
+    </div>
+  </div>
+  <div class="stack">
+    <div class="panel amber">
+      <h3>認証の選択肢</h3>
+      <table class="tight small">
+        <tr><th>方式</th><th>サーバー側</th><th>評価</th></tr>
+        <tr><td>静的 Bearer</td><td><code>bearertokenauth</code> 拡張</td><td>最も簡単。トークンが全端末に配られる点は割り切り（ZOZO の方式）</td></tr>
+        <tr><td><code>otelHeadersHelper</code></td><td>同上（短命トークンを検証）</td><td>29 分ごとに再取得できる。<b>http 系のみ</b>（grpc 不可）</td></tr>
+        <tr><td>mTLS</td><td>Caddy で client cert を検証</td><td>端末証明書を配っている組織向け</td></tr>
+      </table>
+    </div>
+    <div class="callout small"><b>プロトコルは <code>http/protobuf</code> を推奨</b>：Caddy の背後に置きやすく、<code>otelHeadersHelper</code> も使える。OTLP にはプロトコルの既定値がないので、必ず明示する。</div>
+    <div class="callout red small">Grafana と Collector の受信ポート（4317 / 4318）は外に開かず、入口（:443）だけを公開する。自宅や社内 LAN だけで使う場合も、トークンは入れておく（設定を後から変えずに済む）。</div>
+  </div>
+</div>
+<p class="src">出典 monitoring-usage（Dynamic headers / mTLS）・ZOZO（bearertokenauth、LB 前段）</p>
+</section>
+
+<!-- 18 collector pipeline -->
+<section class="slide">
+<p class="eyebrow">6. 共通設計</p>
+<h2>Collector のパイプライン：受けてから何をするか</h2>
+<div class="arch">
+  <div class="box col-otel" style="flex:1"><div class="t">otlp</div><span class="xs">receiver<br>+ bearertokenauth</span></div>
+  <div class="arr"><b>→</b></div>
+  <div class="box col-otel" style="flex:1"><div class="t">memory_limiter</div><span class="xs">過負荷時に受信を絞る（最初に置く）</span></div>
+  <div class="arr"><b>→</b></div>
+  <div class="box col-otel" style="flex:1.3"><div class="t">transform</div><span class="xs">resource 属性をログ属性にコピー（ZOZO の教訓）</span></div>
+  <div class="arr"><b>→</b></div>
+  <div class="box col-otel" style="flex:1.3"><div class="t">attributes / redaction</div><span class="xs">保存先ごとに機密項目を削除・ハッシュ化</span></div>
+  <div class="arr"><b>→</b></div>
+  <div class="box col-otel" style="flex:1"><div class="t">batch</div><span class="xs">まとめて送る（最後に置く）</span></div>
+</div>
+<div class="cols cols-2">
+<pre class="term sm"><span class="c"># resource 属性（OTEL_RESOURCE_ATTRIBUTES の department など）を</span>
+<span class="c"># ログ属性にもコピーする</span>
+<span class="k">transform/copy_resource</span>:
+  <span class="k">log_statements</span>:
+    - <span class="k">context</span>: log
+      <span class="k">statements</span>:
+        - <span class="s">set(attributes["department"], resource.attributes["department"])</span>
+        - <span class="s">set(attributes["team.id"], resource.attributes["team.id"])</span>
+
+<span class="c"># ダッシュボード用には詳細を落とす（監査用の file には落とさない）</span>
+<span class="k">attributes/strip_details</span>:
+  <span class="k">actions</span>:
+    - { <span class="k">key</span>: tool_parameters, <span class="k">action</span>: delete }
+    - { <span class="k">key</span>: tool_input,      <span class="k">action</span>: delete }
+    - { <span class="k">key</span>: prompt,          <span class="k">action</span>: delete }
+    - { <span class="k">key</span>: user.email,      <span class="k">action</span>: hash }  <span class="c"># 匿名化する場合</span></pre>
+  <div class="stack">
+    <div class="panel">
+      <h3>保存先ごとにパイプラインを分ける</h3>
+<pre class="term sm"><span class="k">logs/dashboard</span>:
+  <span class="k">processors</span>: [memory_limiter, transform/copy_resource,
+               attributes/strip_details, batch]
+  <span class="k">exporters</span>:  [otlp_http/loki]
+<span class="k">logs/audit</span>:
+  <span class="k">processors</span>: [memory_limiter, transform/copy_resource, batch]
+  <span class="k">exporters</span>:  [file/audit]</pre>
+      <p class="small" style="margin-top:6px">同じ receiver を 2 つのパイプラインで共有できる。<b>見せる用</b>と<b>保管用</b>で機密度を変える。</p>
+    </div>
+    <div class="callout small">セットアップ中は <code>debug</code> exporter を足して中身を確認し、本番では外す（Qiita の教訓）。Collector 自身のメトリクス（:8888）も Prometheus で取る。</div>
+  </div>
+</div>
+</section>
+
+<!-- 19 temporality & cardinality -->
+<section class="slide">
+<p class="eyebrow">6. 共通設計</p>
+<h2>メトリクスの集計方式とカーディナリティ</h2>
+<div class="cols cols-2">
+  <div class="stack">
+    <div class="panel pw">
+      <h3>delta と cumulative</h3>
+      <p class="small">Claude Code は既定で <b>delta</b>（前回送信からの増分）を送る。Prometheus は <b>cumulative</b>（累計）前提なので、どこかで変換が必要。</p>
+      <ol class="small" style="margin-top:8px">
+        <li><span class="tag green">採用</span> <b>Collector の <code>delta_to_cumulative</code></b>：クライアントは既定の delta のままで、3 案とも同じ設定を配れる。状態をメモリに持つので Collector は 1 台にする。</li>
+        <li><b>クライアントで cumulative を指定</b>（<code style="font-size:11px">…_TEMPORALITY_PREFERENCE=cumulative</code>）：案 D・D′ で値を単純に合計できなくなるので使わない。</li>
+        <li><b>scrape 方式（<code>prometheus</code> exporter）</b>：exporter 側で累積する。delta の扱いは採用バージョンで確認する。</li>
+        <li><b>案 D</b>：<code>api_request</code> イベントの <code>cost_usd</code> で集計すれば、メトリクスを使わないので影響しない。</li>
+      </ol>
+    </div>
+  </div>
+  <div class="stack">
+    <div class="panel ai">
+      <h3>カーディナリティ（案 B で重要）</h3>
+      <table class="tight small">
+        <tr><th>クライアント側の変数</th><th>推奨</th></tr>
+        <tr><td><code>OTEL_METRICS_INCLUDE_SESSION_ID</code></td><td><b>既定（true）のまま</b>。false にするとイベントからも消える（実測）。案 B は Collector でメトリクスからだけ外す</td></tr>
+        <tr><td><code>OTEL_METRICS_INCLUDE_ACCOUNT_UUID</code></td><td>true（利用者別コストに必要）</td></tr>
+        <tr><td><code>OTEL_METRICS_INCLUDE_VERSION</code></td><td>true（バージョン別に見る）</td></tr>
+        <tr><td><code>OTEL_METRICS_INCLUDE_REPOSITORY</code></td><td>true（repo 別に見る。イベントにも付く）</td></tr>
+      </table>
+      <p class="small" style="margin-top:6px">セッション単位の分析はイベント（Loki / ClickHouse）側で行う。</p>
+    </div>
+    <div class="panel">
+      <h3>間欠的な利用への対応</h3>
+      <p class="small">Claude Code は使うときだけ送る。scrape 方式では <code>metric_expiration</code> を長め（例 180m）にしないと、系列が途中で消えて <code>increase()</code> がずれる（Qiita の教訓）。</p>
+    </div>
+  </div>
+</div>
+<p class="src">出典 monitoring-usage（Metrics temporality / cardinality control）・Qiita @ysit</p>
+</section>
+
+<!-- 20 retention & sizing -->
+<section class="slide">
+<p class="eyebrow">6. 共通設計</p>
+<h2>保持期間・容量・バックアップ</h2>
+<div class="cols cols-2">
+  <div class="stack">
+    <div class="panel">
+      <h3>保持期間の設定場所</h3>
+      <table class="tight small">
+        <tr><th>保存先</th><th>設定</th><th>例</th></tr>
+        <tr><td>Prometheus</td><td><code>--storage.tsdb.retention.time</code></td><td>400d（前年同月比を見る）</td></tr>
+        <tr><td>Loki</td><td><code>limits_config.retention_period</code> ＋ compactor の削除を有効化</td><td>90d</td></tr>
+        <tr><td>JSONL</td><td>file exporter の <code>rotation.max_days</code></td><td>365d ＋ 外部退避</td></tr>
+        <tr><td>ClickHouse</td><td>exporter の <code>ttl</code>（テーブルの TTL）</td><td>2〜10 年</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>バックアップ</h3>
+      <ul class="small">
+        <li>named volume を日次でスナップショット（restic などで別ホストへ）。</li>
+        <li>設定（compose・collector・provisioning）はこのリポジトリで管理し、データだけをバックアップ対象にする。</li>
+        <li>監査ログは追記専用の場所に置き、ファイルのハッシュを記録する。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="stack">
+    <div class="panel amber">
+      <h3>イベント量の試算（目安）</h3>
+      <table class="tight small">
+        <tr><td>利用者</td><td class="c">100 名</td></tr>
+        <tr><td>1 人あたりのプロンプト / 日</td><td class="c">100</td></tr>
+        <tr><td>1 プロンプトあたりのイベント</td><td class="c">約 20</td></tr>
+        <tr><td>1 イベントの大きさ（属性込み）</td><td class="c">約 1.5 KB</td></tr>
+        <tr><td><b>生データ / 日</b></td><td class="c"><b>約 300 MB</b></td></tr>
+        <tr><td>1 年分（生）</td><td class="c">約 110 GB</td></tr>
+      </table>
+      <p class="xs muted" style="margin-top:6px">ClickHouse や Loki は圧縮が効くので、実際のディスク使用量はこの数分の 1 になる見込み。<code>OTEL_LOG_TOOL_DETAILS</code> を有効にするとイベントが大きくなる。<b>PoC で実測して見直す</b>。</p>
+    </div>
+    <div class="callout small">メトリクスは 60 秒ごとの送信で、利用者数 × 属性の組み合わせ分の系列になる。<code>session.id</code> を外せば 100 名でも Prometheus 1 台で十分な規模。</div>
+  </div>
+</div>
+</section>
+
+<!-- 21 compose hygiene -->
+<section class="slide">
+<p class="eyebrow">6. 共通設計</p>
+<h2>compose の運用ルール（記事の構成から改善する点）</h2>
+<div class="cols cols-2">
+  <div class="panel">
+    <table class="tight xs">
+      <tr><th style="width:38%">項目</th><th>ルール</th></tr>
+      <tr><td>イメージのタグ</td><td><code>latest</code> を使わない。<code>.env</code> にバージョンを書き、更新はプルリクエストで行う（記事は <code>latest</code>）</td></tr>
+      <tr><td>シークレット</td><td>Grafana の管理者パスワード、Collector のトークン、ClickHouse のパスワードは compose の secrets か <code>.env</code>（git 管理外）で渡す。<code>admin/admin</code> のまま使わない</td></tr>
+      <tr><td>公開ポート</td><td>外に出すのは Caddy の 443 だけ。他は compose 内のネットワークに閉じる</td></tr>
+      <tr><td>依存関係</td><td>push 方式では collector が prometheus / loki に <code>depends_on</code>。scrape 方式では逆（記事は向きが逆だった）</td></tr>
+      <tr><td>ヘルスチェック</td><td>Collector は <code>health_check</code> 拡張（:13133）、各サービスに <code>healthcheck</code> を書く</td></tr>
+      <tr><td>再起動</td><td><code>restart: unless-stopped</code></td></tr>
+      <tr><td>リソース</td><td><code>mem_limit</code> を設定し、Collector の <code>memory_limiter</code> はその 8 割程度に</td></tr>
+      <tr><td>設定の分割</td><td>案ごとの差分は <code>compose.override.yaml</code> や <code>profiles</code> で切り替える</td></tr>
+    </table>
+  </div>
+  <div class="stack">
+    <div class="panel pw">
+      <h3>リポジトリ構成（実装済み）</h3>
+<pre class="term sm">claude-code-opentelemetry-server/
+├── deploy/
+│   ├── common/
+│   │   ├── Caddyfile             <span class="c"># 3 案共通の入口</span>
+│   │   └── client/settings.json  <span class="c"># クライアント設定の例</span>
+│   ├── b-grafana/                <span class="c"># 案 B</span>
+│   │   ├── compose.yaml  .env.example
+│   │   ├── collector/  prometheus/  loki/
+│   │   └── grafana/{provisioning,dashboards}/
+│   ├── d-clickhouse/             <span class="c"># 案 D</span>
+│   │   └── compose.yaml  collector/  grafana/ …
+│   ├── d-duckdb/                 <span class="c"># 案 D′</span>
+│   │   └── compose.yaml  collector/  converter/  grafana/ …
+│   └── README.md                 <span class="c"># 起動手順・検証状況</span>
+└── docs/architecture.html        <span class="c"># この資料</span></pre>
+    </div>
+    <p class="xs muted">案ごとに独立したディレクトリで、<code>cd deploy/b-grafana &amp;&amp; docker compose up -d</code> のように単独で起動する。</p>
+  </div>
+</div>
+</section>
+
+<!-- 22 client side -->
+<section class="slide">
+<p class="eyebrow">7. クライアント</p>
+<h2>クライアント側：サーバーに合わせて配る設定</h2>
+<div class="cols cols-52">
+<pre class="term sm"><span class="c">// deploy/common/client/settings.json（組織では managed settings で配布）</span>
+{
+  <span class="k">"env"</span>: {
+    <span class="k">"CLAUDE_CODE_ENABLE_TELEMETRY"</span>: <span class="s">"1"</span>,
+    <span class="k">"OTEL_METRICS_EXPORTER"</span>: <span class="s">"otlp"</span>,      <span class="c">// managed に書くと止められない</span>
+    <span class="k">"OTEL_LOGS_EXPORTER"</span>: <span class="s">"otlp"</span>,
+    <span class="k">"OTEL_EXPORTER_OTLP_PROTOCOL"</span>: <span class="s">"http/protobuf"</span>,
+    <span class="k">"OTEL_EXPORTER_OTLP_ENDPOINT"</span>: <span class="s">"https://otel.example.internal"</span>,
+    <span class="k">"OTEL_EXPORTER_OTLP_HEADERS"</span>: <span class="s">"Authorization=Bearer xxxxx"</span>,
+    <span class="k">"OTEL_METRICS_INCLUDE_VERSION"</span>: <span class="s">"true"</span>,
+    <span class="k">"OTEL_METRICS_INCLUDE_REPOSITORY"</span>: <span class="s">"true"</span>
+    <span class="c">// 監査が必要なら追加："OTEL_LOG_TOOL_DETAILS": "1"</span>
+  }
+}</pre>
+  <div class="stack">
+    <div class="panel">
+      <h3>置き場所</h3>
+      <ul class="small">
+        <li><b>組織</b>：managed settings（macOS は <code>/Library/Application Support/ClaudeCode/</code>）を MDM で配る。送信先がロックされ、利用者が変えられない。</li>
+        <li><b>個人・PoC</b>：<code>~/.claude/settings.json</code> の <code>env</code>。</li>
+        <li><b>リポジトリの <code>.claude/settings.json</code> は不可</b>：OTel の送信先は無視される。repo の区別は <code>vcs.*</code> 属性で行う。</li>
+      </ul>
+    </div>
+    <div class="callout small">API キー・Bedrock・Vertex で使う場合は <code>user.email</code> が付かない。<code>OTEL_RESOURCE_ATTRIBUTES</code> で利用者 ID を足し、サーバー側の <code>transform</code> でログ属性にコピーする。</div>
+    <div class="callout red small"><code>OTEL_LOG_TOOL_DETAILS</code> を有効にすると Bash コマンドやファイルパスが届く。<b>サーバーの閲覧権限とバックアップ先が、その機密度に耐えるか</b>を先に決める。</div>
+  </div>
+</div>
+<p class="src">詳細は既存資料「Claude Code × OpenTelemetry — 利用状況モニタリング」（設定・属性・イベント）と monitoring-usage を参照。</p>
+</section>
+
+<!-- 23 next actions -->
+<section class="slide">
+<p class="eyebrow">8. 次のアクション</p>
+<h2>決めること・作るもの</h2>
+<div class="cols cols-2">
+  <div class="panel amber">
+    <h3>決めること（人の判断が必要）</h3>
+    <ol class="small">
+      <li><b>目的の優先順位</b>：ダッシュボード／監査／月次レポートのどれを先にするか（Step 2 で B、Step 3 で A を足す前提でよいか）</li>
+      <li><b>詳細ログの範囲</b>：<code>OTEL_LOG_TOOL_DETAILS</code>・<code>OTEL_LOG_USER_PROMPTS</code> を受けるか</li>
+      <li><b>保持期間</b>：メトリクス・イベント・監査ログ</li>
+      <li><b>閲覧権限</b>：個人単位のコストやコマンドを誰が見るか、利用者への周知</li>
+      <li><b>配置先</b>：どの docker ホストで動かすか、ドメインと証明書</li>
+    </ol>
+  </div>
+  <div class="panel pw">
+    <h3>作るもの（このリポジトリで）</h3>
+    <ol class="small">
+      <li>案 C（PoC）：<code>grafana/otel-lgtm</code> を 1 コンテナで起動（compose は未作成）</li>
+      <li><span class="tag green">済</span> <code>deploy/b-grafana</code>：Caddy・Collector・Prometheus・Loki・Grafana（案 B）</li>
+      <li><span class="tag green">済</span> 各案の <code>collector/config.yaml</code>：Bearer 認証、session.id の除去、delta → cumulative 変換</li>
+      <li><span class="tag green">済</span> 各案のダッシュボード（コスト・トークン・Skill・ツール実行・Bash コマンド）</li>
+      <li><span class="tag green">済</span> <code>deploy/common/client/settings.json</code> と <code>deploy/README.md</code>（セットアップ手順）</li>
+      <li><span class="tag green">済</span> <code>deploy/d-clickhouse</code>（案 D）と <code>deploy/d-duckdb</code>（案 D′：DuckDB 版）</li>
+    </ol>
+  </div>
+</div>
+</section>
+
+<!-- 24 sources -->
+<section class="slide">
+<p class="eyebrow">Sources</p>
+<h2>出典</h2>
+<table class="small">
+  <tr><th style="width:36%">資料</th><th>本資料で使った内容</th></tr>
+  <tr><td><a href="https://code.claude.com/docs/ja/monitoring-usage">Claude Code ドキュメント：モニタリング（monitoring-usage）</a></td><td>環境変数、メトリクス・イベント一覧、temporality、カーディナリティ、managed settings、認証（ヘッダー・helper・mTLS）</td></tr>
+  <tr><td><a href="https://zenn.dev/flinters_blog/articles/60925061b333a4">FLINTERS（Zenn）</a></td><td>Collector + Prometheus + Loki + Grafana、ダッシュボードの例、詳細ログの段階、managed settings での配布</td></tr>
+  <tr><td><a href="https://dev.classmethod.jp/articles/building-claude-code-audit-log-with-opentelemetry/">クラスメソッド（DevelopersIO）</a></td><td>Collector + file exporter による監査ログ、<code>tool_parameters</code> の利用、health_check</td></tr>
+  <tr><td><a href="https://qiita.com/ysit/items/129a9f0f1564ed91c716">Qiita @ysit</a></td><td>Collector → Prometheus（scrape）→ Grafana の compose、<code>metric_expiration</code>、カーディナリティの注意</td></tr>
+  <tr><td><a href="https://techblog.zozo.com/entry/claudecode-otel">ZOZO TECH BLOG</a></td><td>Cloud Run Collector + bearertokenauth、Cloud Logging → BigQuery、transform による属性コピー、MDM 配布、長期保持</td></tr>
+  <tr><td>既存資料「Claude Code × OpenTelemetry — 利用状況モニタリング」</td><td>イベントの実測件数、<code>skill_activated</code>・<code>vcs.*</code> の属性、記事と現行仕様の差分</td></tr>
+</table>
+<p class="xs muted">Prometheus・Loki の OTLP 受信、ClickHouse exporter、SigNoz・OpenObserve の構成は各プロジェクトのドキュメントに基づく一般的な仕様で、採用するバージョンで最終確認すること。作成：2026-10-12。</p>
+</section>
+
+</div></div>
+<div id="hud"><span class="kbd">←</span> <span class="kbd">→</span> 移動 · <span class="kbd">O</span> 一覧 · <span class="kbd">F</span> 全画面 · <span class="kbd">P</span> 印刷</div>
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const deck = document.getElementById('deck');
+  const total = slides.length;
+  slides.forEach((s, i) => { s.dataset.n = i + 1; s.dataset.total = total; s.tabIndex = -1; });
+  let cur = Math.min(Math.max(parseInt(location.hash.slice(1), 10) || 1, 1), total) - 1;
+  function show(i) {
+    cur = Math.min(Math.max(i, 0), total - 1);
+    slides.forEach((s, j) => s.classList.toggle('active', j === cur));
+    history.replaceState(null, '', '#' + (cur + 1));
+  }
+  function fit() {
+    if (document.body.classList.contains('overview')) return;
+    const w = innerWidth - 32, h = innerHeight - 32;
+    const k = Math.min(w / 1280, h / 720);
+    deck.style.transform = 'translate(' + (-640 * k) + 'px,' + (-360 * k) + 'px) scale(' + k + ')';
+  }
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const ov = document.body.classList.contains('overview');
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Enter') { if (!ov) { show(cur + 1); e.preventDefault(); } }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') { if (!ov) { show(cur - 1); e.preventDefault(); } }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(total - 1);
+    else if (e.key === 'o' || e.key === 'O' || (e.key === 'Escape' && ov)) { document.body.classList.toggle('overview'); fit(); }
+    else if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); }
+    else if (e.key === 'p' || e.key === 'P') { print(); }
+  });
+  deck.addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    if (document.body.classList.contains('overview')) {
+      const s = e.target.closest('.slide'); if (!s) return;
+      document.body.classList.remove('overview'); show(slides.indexOf(s)); fit();
+    } else if (e.clientX > innerWidth * 0.8) show(cur + 1);
+    else if (e.clientX < innerWidth * 0.2) show(cur - 1);
+  });
+  let tx = null;
+  addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchend', e => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) show(cur + (dx < 0 ? 1 : -1)); tx = null; });
+  addEventListener('hashchange', () => show((parseInt(location.hash.slice(1), 10) || 1) - 1));
+  addEventListener('resize', fit);
+  show(cur); fit();
+})();
+</script>
+</body>
+</html>

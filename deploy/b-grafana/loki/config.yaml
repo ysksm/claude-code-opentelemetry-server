@@ -1,0 +1,43 @@
+# Loki 3.x 単一バイナリ構成。-config.expand-env=true で起動する。
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: ${LOKI_DATA_DIR:-/loki}
+  storage:
+    filesystem:
+      chunks_directory: ${LOKI_DATA_DIR:-/loki}/chunks
+      rules_directory: ${LOKI_DATA_DIR:-/loki}/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # イベントの保持期間（24h の倍数）
+  retention_period: ${LOKI_RETENTION:-2160h}
+  allow_structured_metadata: true
+  volume_enabled: true
+
+compactor:
+  working_directory: ${LOKI_DATA_DIR:-/loki}/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+analytics:
+  reporting_enabled: false

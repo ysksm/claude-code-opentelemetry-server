@@ -1,0 +1,513 @@
+{
+  "uid": "claude-code-dd",
+  "title": "Claude Code 利用状況（DuckDB）",
+  "description": "converter が作る Parquet を DuckDB で集計する。反映は変換の間隔だけ遅れる。",
+  "tags": [
+    "claude-code"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "editable": false,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "refresh": "5m",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "コスト（期間合計）",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT sum(TRY_CAST(log_attributes['cost_usd'] AS DOUBLE)) AS cost FROM otel_logs() WHERE event_name = 'api_request' AND $__timeFilter(timestamp)",
+          "format": 1,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "id": 1,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "トークン（期間合計）",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT CAST(sum(coalesce(TRY_CAST(log_attributes['input_tokens'] AS BIGINT), 0)\n        + coalesce(TRY_CAST(log_attributes['output_tokens'] AS BIGINT), 0)\n        + coalesce(TRY_CAST(log_attributes['cache_read_tokens'] AS BIGINT), 0)\n        + coalesce(TRY_CAST(log_attributes['cache_creation_tokens'] AS BIGINT), 0)) AS DOUBLE) AS tokens\n        FROM otel_logs() WHERE event_name = 'api_request' AND $__timeFilter(timestamp)",
+          "format": 1,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "id": 2,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "セッション数",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT sum(value) AS sessions FROM otel_metrics_sum() WHERE metric_name = 'claude_code.session.count' AND $__timeFilter(timestamp)",
+          "format": 1,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 3,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "利用者数",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT count(DISTINCT user_email) AS users FROM otel_logs() WHERE event_name = 'api_request' AND $__timeFilter(timestamp)",
+          "format": 1,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 4,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "モデル別コスト（1 時間ごと）",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT date_trunc('hour', timestamp) AS time, log_attributes['model'] AS model, sum(TRY_CAST(log_attributes['cost_usd'] AS DOUBLE)) AS cost\n        FROM otel_logs() WHERE event_name = 'api_request' AND $__timeFilter(timestamp) GROUP BY ALL ORDER BY time",
+          "format": 0,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 5,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "種類別トークン（メトリクス、1 時間ごと）",
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT date_trunc('hour', timestamp) AS time, metric_attributes['type'] AS type, sum(value) AS tokens\n        FROM otel_metrics_sum() WHERE metric_name = 'claude_code.token.usage' AND $__timeFilter(timestamp)\n        GROUP BY ALL ORDER BY time",
+          "format": 0,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 6,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "table",
+      "title": "利用者別コスト",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT user_email AS \"利用者\", round(sum(TRY_CAST(log_attributes['cost_usd'] AS DOUBLE)), 4) AS \"コスト (USD)\", count(*) AS \"API 要求\"\n        FROM otel_logs() WHERE event_name = 'api_request' AND $__timeFilter(timestamp) GROUP BY ALL ORDER BY 2 DESC",
+          "format": 1,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 7,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "table",
+      "title": "リポジトリ別コスト",
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT log_attributes['vcs.repository.name'] AS \"リポジトリ\", round(sum(TRY_CAST(log_attributes['cost_usd'] AS DOUBLE)), 4) AS \"コスト (USD)\"\n        FROM otel_logs() WHERE event_name = 'api_request' AND $__timeFilter(timestamp) GROUP BY ALL ORDER BY 2 DESC",
+          "format": 1,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 8,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "table",
+      "title": "Skill の発動（利用者 × リポジトリ × Skill）",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT user_email AS \"利用者\", log_attributes['vcs.repository.name'] AS \"リポジトリ\",\n               log_attributes['skill.name'] AS \"Skill\", log_attributes['invocation_trigger'] AS \"起動方法\", count(*) AS \"回数\"\n        FROM otel_logs() WHERE event_name = 'skill_activated' AND $__timeFilter(timestamp)\n        GROUP BY ALL ORDER BY \"回数\" DESC",
+          "format": 1,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 9,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "table",
+      "title": "ツール実行の結果",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT log_attributes['tool_name'] AS \"ツール\", log_attributes['success'] AS \"成功\", count(*) AS \"回数\",\n               round(avg(TRY_CAST(log_attributes['duration_ms'] AS DOUBLE))) AS \"平均 ms\"\n        FROM otel_logs() WHERE event_name = 'tool_result' AND $__timeFilter(timestamp)\n        GROUP BY ALL ORDER BY \"回数\" DESC",
+          "format": 1,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 10,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "table",
+      "title": "イベント種別ごとの件数",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 8,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT event_name AS \"イベント\", count(*) AS \"件数\"\n        FROM otel_logs() WHERE $__timeFilter(timestamp) GROUP BY ALL ORDER BY 2 DESC",
+          "format": 1,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 11,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    },
+    {
+      "type": "table",
+      "title": "実行された Bash コマンド（監査、要 OTEL_LOG_TOOL_DETAILS）",
+      "gridPos": {
+        "x": 8,
+        "y": 28,
+        "w": 16,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorMode": "code",
+          "rawSql": "SELECT timestamp AS \"時刻\", user_email AS \"利用者\", log_attributes['vcs.repository.name'] AS \"リポジトリ\",\n               json_extract_string(log_attributes['tool_parameters'], '$.full_command') AS \"コマンド\",\n               log_attributes['success'] AS \"成功\"\n        FROM otel_logs() WHERE event_name = 'tool_result' AND log_attributes['tool_name'] = 'Bash'\n          AND $__timeFilter(timestamp) ORDER BY timestamp DESC LIMIT 200",
+          "format": 1,
+          "datasource": {
+            "type": "motherduck-duckdb-datasource",
+            "uid": "duckdb"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 12,
+      "datasource": {
+        "type": "motherduck-duckdb-datasource",
+        "uid": "duckdb"
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  }
+}

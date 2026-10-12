@@ -1,0 +1,62 @@
+# 案 B：metrics → Prometheus（OTLP push）、logs → Loki（OTLP）
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  bearertokenauth:
+    token: ${env:OTEL_INGEST_TOKEN}
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+        auth:
+          authenticator: bearertokenauth
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+  # セッションごとに Prometheus の系列が増えないよう、メトリクスからだけ session.id を外す。
+  # クライアントで OTEL_METRICS_INCLUDE_SESSION_ID=false にするとイベントからも消えるため、こちらで外す。
+  transform/drop_session_id:
+    metric_statements:
+      - context: datapoint
+        statements:
+          - delete_key(datapoint.attributes, "session.id")
+  # Claude Code は既定で delta を送る。Prometheus は cumulative しか受けないため、ここで変換する。
+  # これでクライアント設定（temporality）は 3 案で共通にできる。状態をメモリに持つので Collector は 1 台で動かす。
+  delta_to_cumulative:
+    max_stale: 1h
+  batch: {}
+
+exporters:
+  otlp_http/prometheus:
+    endpoint: ${env:PROMETHEUS_OTLP_ENDPOINT:-http://prometheus:9090/api/v1/otlp}
+    tls:
+      insecure: true
+  otlp_http/loki:
+    endpoint: ${env:LOKI_OTLP_ENDPOINT:-http://loki:3100/otlp}
+    tls:
+      insecure: true
+
+service:
+  extensions: [health_check, bearertokenauth]
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/drop_session_id, delta_to_cumulative, batch]
+      exporters: [otlp_http/prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/loki]

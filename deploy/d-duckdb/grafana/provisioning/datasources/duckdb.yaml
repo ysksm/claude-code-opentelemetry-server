@@ -1,0 +1,16 @@
+apiVersion: 1
+datasources:
+  - name: DuckDB
+    uid: duckdb
+    type: motherduck-duckdb-datasource
+    access: proxy
+    isDefault: true
+    editable: false
+    jsonData:
+      # 空 = インメモリ。Parquet はテーブルマクロで読む（呼ばれたときに解決されるので、データが無くても起動できる）。
+      path: ""
+      initSql: |
+        CREATE OR REPLACE MACRO otel_logs() AS TABLE
+          SELECT * FROM read_parquet('/data/parquet/logs/**/*.parquet', hive_partitioning = true, union_by_name = true);
+        CREATE OR REPLACE MACRO otel_metrics_sum() AS TABLE
+          SELECT * FROM read_parquet('/data/parquet/metrics_sum/**/*.parquet', hive_partitioning = true, union_by_name = true);

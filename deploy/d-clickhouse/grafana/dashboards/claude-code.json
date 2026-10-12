@@ -1,0 +1,513 @@
+{
+  "uid": "claude-code-d",
+  "title": "Claude Code 利用状況（ClickHouse）",
+  "description": "コストとトークンは api_request イベントを集計する（メトリクスの集計方式に依存しない）。",
+  "tags": [
+    "claude-code"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "editable": false,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "refresh": "5m",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "コスト（期間合計）",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT sum(toFloat64OrZero(LogAttributes['cost_usd'])) AS cost FROM otel_logs WHERE LogAttributes['event.name'] = 'api_request' AND $__timeFilter(Timestamp)",
+          "format": 1,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "id": 1,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "トークン（期間合計）",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT sum(toUInt64OrZero(LogAttributes['input_tokens']) + toUInt64OrZero(LogAttributes['output_tokens'])\n        + toUInt64OrZero(LogAttributes['cache_read_tokens']) + toUInt64OrZero(LogAttributes['cache_creation_tokens'])) AS tokens FROM otel_logs WHERE LogAttributes['event.name'] = 'api_request' AND $__timeFilter(Timestamp)",
+          "format": 1,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "id": 2,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "セッション数",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT sum(Value) AS sessions FROM otel_metrics_sum WHERE MetricName = 'claude_code.session.count' AND $__timeFilter(TimeUnix)",
+          "format": 1,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 3,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "利用者数",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT uniqExact(LogAttributes['user.email']) AS users FROM otel_logs WHERE LogAttributes['event.name'] = 'api_request' AND $__timeFilter(Timestamp)",
+          "format": 1,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 4,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "モデル別コスト（1 時間ごと）",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT toStartOfHour(Timestamp) AS time, LogAttributes['model'] AS model,\n               sum(toFloat64OrZero(LogAttributes['cost_usd'])) AS cost\n        FROM otel_logs WHERE LogAttributes['event.name'] = 'api_request' AND $__timeFilter(Timestamp) GROUP BY time, model ORDER BY time",
+          "format": 0,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 5,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "種類別トークン（メトリクス、1 時間ごと）",
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT toStartOfHour(TimeUnix) AS time, Attributes['type'] AS type, sum(Value) AS tokens\n        FROM otel_metrics_sum WHERE MetricName = 'claude_code.token.usage' AND $__timeFilter(TimeUnix)\n        GROUP BY time, type ORDER BY time",
+          "format": 0,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 6,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "table",
+      "title": "利用者別コスト",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT LogAttributes['user.email'] AS `利用者`, round(sum(toFloat64OrZero(LogAttributes['cost_usd'])), 4) AS `コスト (USD)`,\n               count() AS `API 要求`\n        FROM otel_logs WHERE LogAttributes['event.name'] = 'api_request' AND $__timeFilter(Timestamp) GROUP BY 1 ORDER BY 2 DESC",
+          "format": 1,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 7,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "table",
+      "title": "リポジトリ別コスト",
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT LogAttributes['vcs.repository.name'] AS `リポジトリ`, round(sum(toFloat64OrZero(LogAttributes['cost_usd'])), 4) AS `コスト (USD)`\n        FROM otel_logs WHERE LogAttributes['event.name'] = 'api_request' AND $__timeFilter(Timestamp) GROUP BY 1 ORDER BY 2 DESC",
+          "format": 1,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 8,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "table",
+      "title": "Skill の発動（利用者 × リポジトリ × Skill）",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT LogAttributes['user.email'] AS `利用者`, LogAttributes['vcs.repository.name'] AS `リポジトリ`,\n               LogAttributes['skill.name'] AS `Skill`, LogAttributes['invocation_trigger'] AS `起動方法`, count() AS `回数`\n        FROM otel_logs WHERE LogAttributes['event.name'] = 'skill_activated' AND $__timeFilter(Timestamp)\n        GROUP BY 1, 2, 3, 4 ORDER BY `回数` DESC",
+          "format": 1,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 9,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "table",
+      "title": "ツール実行の結果",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT LogAttributes['tool_name'] AS `ツール`, LogAttributes['success'] AS `成功`, count() AS `回数`,\n               round(avg(toFloat64OrZero(LogAttributes['duration_ms']))) AS `平均 ms`\n        FROM otel_logs WHERE LogAttributes['event.name'] = 'tool_result' AND $__timeFilter(Timestamp)\n        GROUP BY 1, 2 ORDER BY `回数` DESC",
+          "format": 1,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 10,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "table",
+      "title": "イベント種別ごとの件数",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 8,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT LogAttributes['event.name'] AS `イベント`, count() AS `件数`\n        FROM otel_logs WHERE $__timeFilter(Timestamp) GROUP BY 1 ORDER BY 2 DESC",
+          "format": 1,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 11,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    },
+    {
+      "type": "table",
+      "title": "実行された Bash コマンド（監査、要 OTEL_LOG_TOOL_DETAILS）",
+      "gridPos": {
+        "x": 8,
+        "y": 28,
+        "w": 16,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "rawSql": "SELECT Timestamp AS `時刻`, LogAttributes['user.email'] AS `利用者`, LogAttributes['vcs.repository.name'] AS `リポジトリ`,\n               JSONExtractString(LogAttributes['tool_parameters'], 'full_command') AS `コマンド`, LogAttributes['success'] AS `成功`\n        FROM otel_logs WHERE LogAttributes['event.name'] = 'tool_result' AND LogAttributes['tool_name'] = 'Bash'\n          AND $__timeFilter(Timestamp) ORDER BY Timestamp DESC LIMIT 200",
+          "format": 1,
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 12,
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  }
+}

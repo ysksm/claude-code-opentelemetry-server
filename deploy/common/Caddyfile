@@ -1,0 +1,23 @@
+# 3 案共通の入口。1 つのホスト名で OTLP と Grafana を受ける。
+#   https://<SITE_ADDRESS>/v1/{metrics,logs,traces} → collector:4318
+#   https://<SITE_ADDRESS>/                         → grafana:3000
+# 証明書は Caddy の内部 CA で発行する（tls internal）。
+# クライアントは Caddy のルート CA を NODE_EXTRA_CA_CERTS で信頼する（deploy/README.md 参照）。
+# 公開 DNS 名で ACME を使う場合は `tls internal` を消す。
+{
+	# 内部 CA のルート証明書をホストの信頼ストアに入れようとしない（コンテナでは不要）
+	skip_install_trust
+}
+
+{$SITE_ADDRESS:localhost} {
+	tls internal
+
+	@otlp path /v1/metrics /v1/logs /v1/traces
+	handle @otlp {
+		reverse_proxy collector:4318
+	}
+
+	handle {
+		reverse_proxy grafana:3000
+	}
+}

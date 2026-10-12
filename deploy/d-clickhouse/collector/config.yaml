@@ -1,0 +1,66 @@
+# 案 D：metrics と logs を ClickHouse へ。テーブルは exporter が作る（create_schema）。
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  bearertokenauth:
+    token: ${env:OTEL_INGEST_TOKEN}
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+        auth:
+          authenticator: bearertokenauth
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+  batch: {}
+
+exporters:
+  clickhouse:
+    endpoint: ${env:CLICKHOUSE_ENDPOINT:-tcp://clickhouse:9000}
+    database: ${env:CLICKHOUSE_DB}
+    username: ${env:CLICKHOUSE_USER}
+    password: ${env:CLICKHOUSE_PASSWORD}
+    create_schema: true
+    # テーブルの TTL（例 17520h = 2 年）
+    ttl: ${env:CLICKHOUSE_TTL:-17520h}
+    logs_table_name: otel_logs
+    metrics_tables:
+      sum:
+        name: otel_metrics_sum
+      gauge:
+        name: otel_metrics_gauge
+      histogram:
+        name: otel_metrics_histogram
+      exponential_histogram:
+        name: otel_metrics_exponential_histogram
+      summary:
+        name: otel_metrics_summary
+    timeout: 10s
+    retry_on_failure:
+      enabled: true
+
+service:
+  extensions: [health_check, bearertokenauth]
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [clickhouse]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [clickhouse]
