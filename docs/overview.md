@@ -2,6 +2,7 @@
 
 Claude Code を使う人と、導入を判断する人向けの説明です。何を・なぜ・どこに集めるのか、誰が見るのか、
 自分の端末をどう設定するのかをまとめています。
+スライド版は [`overview.html`](overview.html) です。
 運用者向けの手引きは [`admin-guide.md`](admin-guide.md)、構成案の比較は [`architecture.html`](architecture.html) を参照してください。
 
 ## 何のために集めるのか

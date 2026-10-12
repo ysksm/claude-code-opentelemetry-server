@@ -1,6 +1,7 @@
 # 管理画面の利用の手引き
 
 収集サーバーを運用する人と、利用状況を見る人（チームリーダー・管理部門）向けの手引きです。
+スライド版は [`admin-guide.html`](admin-guide.html) です。
 管理画面は Grafana で、3 案（B・D・D′）とも同じ見た目のダッシュボード「Claude Code 利用状況」が入っています。
 サーバーの起動手順は [`deploy/README.md`](../deploy/README.md)、利用者側の設定は [`overview.md`](overview.md) を参照してください。
 

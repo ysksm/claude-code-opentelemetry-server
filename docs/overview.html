@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>利用状況の収集について</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;600&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F7F4EF; --paper-2: #EEE8DF;
+  --ink: #221A14; --ink-2: #54483E; --ink-3: #8A7D72; --rule: #DDD3C7;
+  --pw: #B4532F; --pw-soft: #F6DFD3;
+  --ai: #2F6FBF; --ai-soft: #D9E7F8;
+  --green: #3C7A4E; --green-soft: #DCEEDF;
+  --amber: #B7791F; --amber-soft: #FBEBC8;
+  --red: #B4432F; --red-soft: #F6DAD5;
+  --violet: #6B4FA8; --violet-soft: #E6DFF4;
+  --term: #1B1511; --term-ink: #F0E6DC; --term-dim: #A08E80;
+  --term-key: #F2A27E; --term-str: #9EC9E0; --term-num: #F5C97A;
+  --display: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --body: "IBM Plex Sans JP", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--term); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; overflow: hidden; }
+#stage { position: fixed; inset: 0; padding: 16px; }
+.deck { width: 1280px; height: 720px; position: absolute; left: 50%; top: 50%; transform-origin: 0 0; }
+.slide { position: absolute; inset: 0; background: var(--paper); color: var(--ink); padding: 48px 68px 56px; display: none; flex-direction: column; gap: 18px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+.slide.active { display: flex; }
+.slide::after { content: attr(data-n) " / " attr(data-total); position: absolute; right: 68px; bottom: 20px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.slide::before { content: "Claude Code × OpenTelemetry — 利用状況の収集について"; position: absolute; left: 68px; bottom: 20px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); letter-spacing: .04em; }
+.slide.cover::before, .slide.cover::after { display: none; }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--pw); margin: 0; }
+h1 { font-family: var(--display); font-weight: 900; font-size: 60px; line-height: 1.15; margin: 0; }
+h2 { font-family: var(--display); font-weight: 700; font-size: 32px; line-height: 1.25; margin: 0; }
+h3 { font-family: var(--display); font-weight: 700; font-size: 17px; margin: 0 0 6px; }
+p { margin: 0; }
+.lead { font-size: 18px; color: var(--ink-2); }
+.muted { color: var(--ink-3); }
+.small { font-size: 14px; } .xs { font-size: 12.5px; }
+code, .mono { font-family: var(--mono); }
+p code, li code, td code, th code, .box code { background: var(--paper-2); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+ul, ol { margin: 0; padding-left: 1.3em; }
+li { margin: 3px 0; }
+li::marker { color: var(--pw); }
+b, strong { font-weight: 600; }
+a { color: var(--pw); text-decoration: none; border-bottom: 1px solid var(--pw-soft); }
+.cols { display: grid; gap: 22px; flex: 1; min-height: 0; }
+.cols-2 { grid-template-columns: 1fr 1fr; }
+.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.cols-52 { grid-template-columns: 1.2fr 1fr; }
+.cols-25 { grid-template-columns: 1fr 1.25fr; }
+.stack { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.panel { background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 12px 16px; }
+.panel.pw { border-top: 3px solid var(--pw); } .panel.ai { border-top: 3px solid var(--ai); }
+.panel.green { border-top: 3px solid var(--green); } .panel.amber { border-top: 3px solid var(--amber); }
+.panel.red { border-top: 3px solid var(--red); } .panel.violet { border-top: 3px solid var(--violet); }
+.tag { display: inline-block; font-family: var(--mono); font-size: 11.5px; padding: 1px 8px; border-radius: 999px; background: var(--pw-soft); color: var(--pw); vertical-align: middle; white-space: nowrap; }
+.tag.ai { background: var(--ai-soft); color: var(--ai); } .tag.green { background: var(--green-soft); color: var(--green); }
+.tag.amber { background: var(--amber-soft); color: var(--amber); } .tag.red { background: var(--red-soft); color: var(--red); }
+.tag.violet { background: var(--violet-soft); color: var(--violet); }
+ul.pm { list-style: none; padding-left: 1.4em; }
+ul.pm li { text-indent: -1.4em; }
+ul.pm li.good::before { content: "○ "; color: var(--green); font-weight: 700; }
+ul.pm li.bad::before { content: "△ "; color: var(--red); font-weight: 700; }
+.term { background: var(--term); color: var(--term-ink); border-radius: 8px; padding: 12px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; overflow: hidden; white-space: pre; margin: 0; }
+.term .k { color: var(--term-key); } .term .s { color: var(--term-str); } .term .n { color: var(--term-num); } .term .c { color: var(--term-dim); font-style: italic; }
+.term.sm { font-size: 11.5px; }
+.term.xs { font-size: 11px; line-height: 1.36; padding: 10px 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); font-size: 12.5px; letter-spacing: .04em; }
+tr:last-child td { border-bottom: none; }
+.tight td, .tight th { padding: 4px 8px; }
+.callout { background: var(--pw-soft); border-left: 4px solid var(--pw); border-radius: 6px; padding: 9px 14px; font-size: 14px; }
+.callout.ai { background: var(--ai-soft); border-left-color: var(--ai); }
+.callout.red { background: var(--red-soft); border-left-color: var(--red); }
+.callout.green { background: var(--green-soft); border-left-color: var(--green); }
+.src { font-family: var(--mono); font-size: 11px; color: var(--ink-3); border-top: 1px dashed var(--rule); padding-top: 6px; margin-top: auto; }
+.src a { color: var(--ink-3); border-bottom-color: var(--rule); }
+/* ---------- architecture diagram ---------- */
+.arch { display: flex; align-items: center; gap: 8px; }
+.arch .col { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.box { background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; font-size: 13px; line-height: 1.45; }
+.box .t { font-family: var(--display); font-weight: 700; font-size: 15px; }
+.box .p { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.box.client { background: var(--paper-2); }
+.box.edge { border-color: var(--amber); background: var(--amber-soft); }
+.box.col-otel { border-color: var(--pw); background: var(--pw-soft); }
+.box.store { border-color: var(--ai); background: var(--ai-soft); }
+.box.viz { border-color: var(--green); background: var(--green-soft); }
+.box.dashed { border-style: dashed; background: transparent; }
+.arr { align-self: center; font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-align: center; line-height: 1.25; min-width: 54px; }
+.arr b { display: block; font-size: 20px; color: var(--pw); line-height: 1; }
+.compose { font-family: var(--mono); font-size: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.compose span { background: var(--term); color: var(--term-ink); border-radius: 4px; padding: 2px 8px; }
+/* ---------- cover ---------- */
+.cover { background: var(--term); color: var(--term-ink); justify-content: flex-end; padding-bottom: 80px; }
+.cover .eyebrow { color: var(--term-key); }
+.cover h1 { color: #fff; font-size: 66px; }
+.cover .lead { color: var(--term-ink); max-width: 46em; }
+.cover .meta { font-family: var(--mono); font-size: 13px; color: var(--term-dim); display: flex; gap: 28px; }
+.cover .frame { position: absolute; right: 60px; top: 56px; width: 520px; font-family: var(--mono); font-size: 12.5px; color: var(--term-dim); line-height: 1.6; white-space: pre; border-left: 2px solid var(--pw); padding-left: 16px; }
+.cover .frame .k { color: var(--term-key); } .cover .frame .s { color: var(--term-str); }
+/* ---------- option card / matrix ---------- */
+.opt { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 12px; flex: 1; min-height: 0; }
+.opt .panel { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.opt .letter { font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1; }
+.dots { font-family: var(--mono); letter-spacing: 1px; color: var(--pw); white-space: nowrap; }
+.dots .off { color: var(--rule); }
+td.c, th.c { text-align: center; }
+.road { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.road .panel { position: relative; }
+.road .no { font-family: var(--display); font-weight: 900; font-size: 26px; color: var(--pw); line-height: 1.1; }
+.dash { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 5px; font-size: 12px; }
+.dash div { background: var(--paper-2); border-radius: 4px; padding: 5px 8px; }
+.dash .q { background: var(--pw-soft); }
+.dash .h { grid-column: span 2; padding: 9px 8px; }
+.dash .lbl { background: none; color: var(--ink-3); font-family: var(--mono); font-size: 11px; align-self: center; white-space: nowrap; }
+.nowrap th { white-space: nowrap; }
+#hud { position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; color: var(--term-dim); opacity: .7; }
+:focus-visible { outline: 2px solid var(--pw); outline-offset: 2px; }
+body.overview #stage { display: block; overflow: auto; padding: 24px; }
+body.overview .deck { position: static; width: auto; height: auto; transform: none !important; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+body.overview .slide { display: flex; position: relative; width: 100%; aspect-ratio: 16/9; height: auto; zoom: .32; cursor: pointer; }
+@media print {
+  body { overflow: visible; background: #fff; }
+  #stage { position: static; padding: 0; }
+  .deck { position: static; width: 1280px; height: auto; transform: none !important; }
+  .slide { display: flex; position: relative; height: 720px; page-break-after: always; box-shadow: none; }
+  #hud { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="stage"><div class="deck" id="deck">
+
+<!-- cover -->
+<section class="slide cover">
+<div class="frame"><span class="k">送るもの</span>
+  コスト・トークン・セッション数
+  ツールの実行結果・Skill の起動
+  プロンプトの<span class="s">長さ</span>
+
+<span class="k">送らないもの</span>（既定）
+  プロンプトの本文
+  コード・ファイルの中身
+  Bash コマンドの全文</div>
+<p class="eyebrow">Overview · 利用者と導入を判断する人へ</p>
+<h1>Claude Code 利用状況の<br>収集について</h1>
+<p class="lead">何のために、何を、どこへ集めるのか。誰が見て、どのくらい残るのか。自分の端末をどう設定するのか。文書版は docs/overview.md。</p>
+<div class="meta"><span>2026-10-12</span><span>対象：deploy/ の 3 案（B・D・D′）共通</span><span>taskapp OTEL-12</span></div>
+</section>
+
+<!-- 3 why -->
+<section class="slide">
+<p class="eyebrow">1. 目的</p>
+<h2>何のために集めるのか</h2>
+<div class="cols cols-3">
+  <div class="panel pw">
+    <h3>費用を把握する</h3>
+    <p class="small">誰が・どのリポジトリで・どのモデルにいくら使っているか（概算）を、請求を待たずに日単位で見る。</p>
+    <p class="small muted" style="margin-top:8px">パネル：コスト、モデル別、利用者別、リポジトリ別</p>
+  </div>
+  <div class="panel green">
+    <h3>使い方を知って広げる</h3>
+    <p class="small">よく使われる Skill やツール、失敗の多い操作を見つけ、手順書や Skill の整備に生かす。</p>
+    <p class="small muted" style="margin-top:8px">パネル：Skill の発動、ツール実行の結果</p>
+  </div>
+  <div class="panel amber">
+    <h3>監査に備える <span class="tag amber">任意</span></h3>
+    <p class="small">組織で有効にした場合だけ、Claude Code が実行した Bash コマンドの記録を残す。</p>
+    <p class="small muted" style="margin-top:8px">パネル：実行された Bash コマンド（D・D′）</p>
+  </div>
+</div>
+<div class="callout">個人の評価に使うことは目的にしていない。<b>誰が見るか・何に使うか</b>は導入する組織が決め、利用者に知らせる。</div>
+</section>
+
+<!-- 4 how -->
+<section class="slide">
+<p class="eyebrow">2. 仕組み</p>
+<h2>端末から社内サーバーへ、HTTPS とトークンで送る</h2>
+<div class="arch" style="margin-top:12px">
+  <div class="col"><div class="box client"><div class="t">Claude Code</div><div class="p">各利用者の端末</div>OTel 組み込み</div></div>
+  <div class="arr"><b>→</b>HTTPS<br>Bearer</div>
+  <div class="col"><div class="box edge"><div class="t">Caddy</div><div class="p">:443</div>TLS 終端・振り分け</div></div>
+  <div class="arr"><b>→</b>/v1/*</div>
+  <div class="col"><div class="box col-otel"><div class="t">Collector</div><div class="p">:4318</div>トークン確認</div></div>
+  <div class="arr"><b>→</b></div>
+  <div class="col">
+    <div class="box store"><div class="t">B</div>Prometheus + Loki</div>
+    <div class="box store"><div class="t">D</div>ClickHouse</div>
+    <div class="box store"><div class="t">D′</div>JSONL → Parquet</div>
+  </div>
+  <div class="arr"><b>→</b></div>
+  <div class="col"><div class="box viz"><div class="t">Grafana</div><div class="p">https://&lt;SITE_ADDRESS&gt;/</div>管理画面</div></div>
+</div>
+<div class="cols cols-3" style="flex:0">
+  <div class="panel"><h3>いつ送るか</h3><p class="small">使っている間、メトリクスは 1 分ごと、イベントは数秒ごとにまとめて送る。</p></div>
+  <div class="panel"><h3>どこへ送るか</h3><p class="small">社内の収集サーバーだけ。共通のトークンを持つ端末からしか受け付けない。</p></div>
+  <div class="panel"><h3>失敗したら</h3><p class="small">Claude Code はそのまま動く。届かなかった分のデータが欠けるだけ。</p></div>
+</div>
+</section>
+
+<!-- 5 what -->
+<section class="slide">
+<p class="eyebrow">3. 送られるもの</p>
+<h2>数値と出来事は送る。中身（プロンプト・コード）は送らない</h2>
+<div class="cols cols-52">
+  <div class="panel green">
+    <h3>送られるもの</h3>
+    <table class="tight small nowrap">
+      <tr><th>利用者</th><td>メールアドレス、アカウント・組織 ID、セッション ID</td></tr>
+      <tr><th>環境</th><td>バージョン、OS・端末の種類、Git リポジトリ名</td></tr>
+      <tr><th>メトリクス</th><td>コスト（概算 USD）、トークン数、セッション数、変更行数、コミット・PR 数、操作時間</td></tr>
+      <tr><th>イベント</th><td>API 呼び出し（モデル・トークン・コスト）、ツールの実行結果と許可・拒否、Skill の起動、エラー、プロンプトの<b>長さ</b></td></tr>
+      <tr><th>任意</th><td><code>department</code>・<code>team.id</code> など（設定で付けた場合）</td></tr>
+    </table>
+  </div>
+  <div class="stack">
+    <div class="panel red">
+      <h3>送られないもの（既定）</h3>
+      <ul class="small">
+        <li>プロンプトの本文（何を頼んだか）</li>
+        <li>コード・ファイルの中身、Claude の応答の本文</li>
+        <li>Bash コマンドの全文などツールの詳細</li>
+      </ul>
+    </div>
+    <div class="panel amber">
+      <h3>組織が有効にした場合だけ</h3>
+      <p class="small"><code>OTEL_LOG_TOOL_DETAILS=1</code>（<code>--tool-details</code>）で、Bash コマンドの全文とツールの引数が送られる。</p>
+      <p class="small" style="margin-top:6px">コマンドに含まれるパスワードやトークンも保存される。<b>閲覧権限とバックアップ先が耐えられるかを先に決める。</b></p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- 6 who / retention -->
+<section class="slide">
+<p class="eyebrow">4. 閲覧と保存</p>
+<h2>誰が見るのか、どのくらい残るのか</h2>
+<div class="cols cols-2">
+  <div class="panel pw">
+    <h3>誰が見るのか</h3>
+    <ul class="small">
+      <li>管理画面（Grafana）は、<b>管理者がアカウントを作った人だけ</b>が見られる。自分でアカウントは作れない。</li>
+      <li>見えるのは、利用者別・リポジトリ別のコスト、ツール・Skill の利用回数など。</li>
+      <li>Viewer にも「実行された Bash コマンド」は見える。必要な人にだけアカウントを渡す。</li>
+      <li>自分のデータを見たいときは管理者に頼む（アカウントか CSV）。</li>
+    </ul>
+  </div>
+  <div class="panel ai">
+    <h3>どのくらい残るのか（既定）</h3>
+    <table class="tight small">
+      <tr><th>案</th><th>保存先</th><th>期間</th></tr>
+      <tr><td>B</td><td>Prometheus ／ Loki</td><td>数値 400 日 ／ イベント 90 日</td></tr>
+      <tr><td>D</td><td>ClickHouse</td><td>2 年</td></tr>
+      <tr><td>D′</td><td>JSONL ／ Parquet</td><td>原本 400 日 ／ 削除しない</td></tr>
+    </table>
+    <p class="small muted" style="margin-top:8px">組織の方針に合わせて <code>.env</code> で変えられる。</p>
+  </div>
+</div>
+</section>
+
+<!-- 7 client setup -->
+<section class="slide">
+<p class="eyebrow">5. 端末の設定</p>
+<h2>スクリプト 1 本で設定する（macOS / Linux）</h2>
+<div class="cols cols-25">
+  <div class="stack">
+    <div class="panel">
+      <h3>管理者から受け取るもの</h3>
+      <ul class="small">
+        <li><code>setup-client.sh</code>（<code>deploy/common/client/</code>）</li>
+        <li><code>caddy-root.crt</code>（社内 CA の証明書）</li>
+        <li>サーバーの URL とトークン</li>
+      </ul>
+    </div>
+    <div class="panel green">
+      <h3>スクリプトがすること</h3>
+      <ol class="small">
+        <li>接続・トークン・証明書を確かめる。だめなら<b>何も書き換えずに止まる</b></li>
+        <li>証明書を <code>~/.claude/otel/ca.crt</code> に置く</li>
+        <li><code>~/.claude/settings.json</code> の <code>env</code> に書き足す（他の設定は変えない、バックアップを取る、権限 600）</li>
+      </ol>
+    </div>
+  </div>
+  <div class="stack">
+<pre class="term sm"><span class="c"># トークンは履歴に残らないよう環境変数で渡す（省くと入力を求められる）</span>
+<span class="k">$</span> OTEL_INGEST_TOKEN=<span class="s">&lt;トークン&gt;</span> ./setup-client.sh \
+    --endpoint <span class="s">https://otel.example.internal</span> \
+    --ca-cert  <span class="s">./caddy-root.crt</span>
+<span class="k">==&gt;</span> 接続確認 OK（…/v1/metrics が 200 を返しました）
+<span class="k">==&gt;</span> 証明書を配置: ~/.claude/otel/ca.crt
+<span class="k">==&gt;</span> バックアップ: ~/.claude/settings.json.bak.20261012…
+<span class="k">==&gt;</span> 書き込み: ~/.claude/settings.json</pre>
+    <table class="tight small">
+      <tr><th>やりたいこと</th><th>オプション</th></tr>
+      <tr><td>内容を確かめる（書き換えない）</td><td><code>--print</code></td></tr>
+      <tr><td>つながるか確かめる</td><td><code>--check</code></td></tr>
+      <tr><td>送信を止める</td><td><code>--uninstall</code></td></tr>
+      <tr><td>部署を付ける</td><td><code>--attributes department=eng</code></td></tr>
+      <tr><td>Bash コマンドも送る（組織の方針で）</td><td><code>--tool-details</code></td></tr>
+      <tr><td>組織で配る（root）</td><td><code>--scope managed</code></td></tr>
+    </table>
+    <p class="xs muted">設定のあとに起動した Claude Code から送信が始まる。Windows は <code>settings.json</code> を手で入れる。</p>
+  </div>
+</div>
+</section>
+
+<!-- distribute -->
+<section class="slide">
+<p class="eyebrow">5. 端末の設定</p>
+<h2>組織で配る場合と Windows の場合</h2>
+<div class="cols cols-3">
+  <div class="panel pw">
+    <h3>managed settings で配る</h3>
+    <p class="small">組織が配っている場合は、すでに設定されている。<b>利用者が自分で外すことはできない</b>。</p>
+    <table class="tight small" style="margin-top:8px">
+      <tr><th>macOS</th><td><code>/Library/Application Support/ClaudeCode/managed-settings.json</code></td></tr>
+      <tr><th>Linux</th><td><code>/etc/claude-code/managed-settings.json</code></td></tr>
+    </table>
+  </div>
+  <div class="panel amber">
+    <h3>Windows</h3>
+    <p class="small">スクリプトはまだない。<code>deploy/common/client/settings.json</code> の <code>env</code> を手で入れる。</p>
+    <ol class="small" style="margin-top:6px">
+      <li><code>%USERPROFILE%\.claude\settings.json</code> を開く</li>
+      <li><code>env</code> にキーを足し、URL とトークンを書き換える</li>
+      <li><code>NODE_EXTRA_CA_CERTS</code> に証明書のパスを足す</li>
+    </ol>
+  </div>
+  <div class="panel green">
+    <h3>設定のあと</h3>
+    <ul class="small">
+      <li>次に起動した Claude Code から送信が始まる。起動中のものは再起動する。</li>
+      <li>止めるときは <code>--uninstall</code>。書き足したキーだけを消し、もともと使っていた証明書の設定は元に戻す。</li>
+      <li>リポジトリの <code>.claude/settings.json</code> に書いた OTel の設定は<b>無視される</b>。</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- faq -->
+<section class="slide">
+<p class="eyebrow">6. よくある質問</p>
+<h2>よくある質問</h2>
+<div class="cols cols-2">
+  <div class="stack">
+    <div class="panel"><h3>送信すると Claude Code が遅くなりませんか？</h3><p class="small">まとめて非同期に送るので、操作への影響はほとんどない。</p></div>
+    <div class="panel"><h3>社外のネットワークにいるときは？</h3><p class="small">収集サーバーに届かない間は送信に失敗し、その分のデータは残らない。Claude Code はそのまま使える。</p></div>
+    <div class="panel"><h3>ダッシュボードのコストは請求額ですか？</h3><p class="small">いいえ。トークン数から計算した概算。サブスクリプションで使っている場合も、従量課金に換算した値が出る。</p></div>
+  </div>
+  <div class="stack">
+    <div class="panel"><h3>自分のデータを見たいです</h3><p class="small">管理者に頼む。閲覧用のアカウントを作るか、該当部分を CSV で渡せる。</p></div>
+    <div class="panel"><h3>リポジトリの <code>.claude/settings.json</code> に書いてもよいですか？</h3><p class="small">OTel の設定はリポジトリ側では無効。個人の <code>~/.claude/settings.json</code> か managed settings に入れる。</p></div>
+    <div class="panel"><h3>プロンプトの中身は見られますか？</h3><p class="small">見られない。送られるのは長さだけ。この構成では本文を送る設定（<code>OTEL_LOG_USER_PROMPTS</code>）は使わない。</p></div>
+  </div>
+</div>
+</section>
+
+<!-- summary -->
+<section class="slide">
+<p class="eyebrow">Summary</p>
+<h2>まとめと資料</h2>
+<div class="cols cols-2">
+  <div class="panel pw">
+    <h3>押さえておくこと</h3>
+    <ul class="small">
+      <li>送るのは<b>数値と出来事</b>。プロンプトやコードの中身は送らない。</li>
+      <li>Bash コマンドの記録は<b>組織が有効にしたときだけ</b>。</li>
+      <li>送り先は社内のサーバーだけ。HTTPS とトークンで守る。</li>
+      <li>管理画面を見られるのは、アカウントを作られた人だけ。</li>
+      <li>端末の設定は <code>setup-client.sh</code> 1 本。<code>--uninstall</code> で戻せる。</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>資料</h3>
+    <table class="tight small">
+      <tr><td><code>docs/overview.md</code></td><td>この資料の文書版</td></tr>
+      <tr><td><code>docs/admin-guide.html</code></td><td>管理画面の利用の手引き（スライド）</td></tr>
+      <tr><td><code>deploy/common/client/setup-client.sh</code></td><td>端末の設定スクリプト</td></tr>
+      <tr><td><code>docs/architecture.html</code></td><td>構成案の比較</td></tr>
+    </table>
+  </div>
+</div>
+</section>
+
+</div></div>
+<div id="hud"><span class="kbd">←</span> <span class="kbd">→</span> 移動 · <span class="kbd">O</span> 一覧 · <span class="kbd">F</span> 全画面 · <span class="kbd">P</span> 印刷</div>
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const deck = document.getElementById('deck');
+  const total = slides.length;
+  slides.forEach((s, i) => { s.dataset.n = i + 1; s.dataset.total = total; s.tabIndex = -1; });
+  let cur = Math.min(Math.max(parseInt(location.hash.slice(1), 10) || 1, 1), total) - 1;
+  function show(i) {
+    cur = Math.min(Math.max(i, 0), total - 1);
+    slides.forEach((s, j) => s.classList.toggle('active', j === cur));
+    history.replaceState(null, '', '#' + (cur + 1));
+  }
+  function fit() {
+    if (document.body.classList.contains('overview')) return;
+    const w = innerWidth - 32, h = innerHeight - 32;
+    const k = Math.min(w / 1280, h / 720);
+    deck.style.transform = 'translate(' + (-640 * k) + 'px,' + (-360 * k) + 'px) scale(' + k + ')';
+  }
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const ov = document.body.classList.contains('overview');
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Enter') { if (!ov) { show(cur + 1); e.preventDefault(); } }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') { if (!ov) { show(cur - 1); e.preventDefault(); } }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(total - 1);
+    else if (e.key === 'o' || e.key === 'O' || (e.key === 'Escape' && ov)) { document.body.classList.toggle('overview'); fit(); }
+    else if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); }
+    else if (e.key === 'p' || e.key === 'P') { print(); }
+  });
+  deck.addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    if (document.body.classList.contains('overview')) {
+      const s = e.target.closest('.slide'); if (!s) return;
+      document.body.classList.remove('overview'); show(slides.indexOf(s)); fit();
+    } else if (e.clientX > innerWidth * 0.8) show(cur + 1);
+    else if (e.clientX < innerWidth * 0.2) show(cur - 1);
+  });
+  let tx = null;
+  addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchend', e => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) show(cur + (dx < 0 ? 1 : -1)); tx = null; });
+  addEventListener('hashchange', () => show((parseInt(location.hash.slice(1), 10) || 1) - 1));
+  addEventListener('resize', fit);
+  show(cur); fit();
+})();
+</script>
+</body>
+</html>
