@@ -18,25 +18,36 @@ Claude Code ──https──▶ caddy:443 ──/v1/*──▶ collector:4318�
 
 - 入口は Caddy 1 つで、1 つのホスト名で OTLP と Grafana を受けます（[`common/Caddyfile`](common/Caddyfile)）。
 - 証明書は Caddy の内部 CA が発行します（`tls internal`）。公開 DNS 名で Let's Encrypt を使う場合は `tls internal` の行を消します。
-- Collector は `OTEL_INGEST_TOKEN` と一致する `Authorization: Bearer` だけを受け付けます。
+- Collector は `.env` の `OTEL_INGEST_TOKEN` と一致する `Authorization: Bearer` だけを受け付けます。
 - 動作確認用に、Collector の 4318 番をホスト自身（127.0.0.1）にだけ TLS なしで開けています。
 
 ## 起動手順
 
 ```bash
-cd deploy/b-grafana          # または d-clickhouse / d-duckdb
-cp .env.example .env
-# .env を編集：SITE_ADDRESS、OTEL_INGEST_TOKEN（openssl rand -hex 32）、各パスワード
-docker compose up -d         # d-duckdb はビルドがあるので初回は少し時間がかかる
+cd deploy
+bash setup-env.sh d-clickhouse 192.168.1.10   # 案のディレクトリ名と、入口のホスト名か IP アドレス
+cd d-clickhouse
+docker compose up -d                          # d-duckdb はビルドがあるので初回は少し時間がかかる
 docker compose ps
 ```
+
+`setup-env.sh` は `.env.example` から `.env` を作り、トークンとパスワードをランダムな値で埋めます（権限は 600）。
+もう一度実行しても設定済みの値は変えないので、SITE_ADDRESS だけ変えたいときも同じコマンドで済みます。
+
+`.env` の中身は 3 つに分かれています。
+
+| 区分 | 例 | 未設定のとき |
+|---|---|---|
+| 必須 | `OTEL_INGEST_TOKEN`、`GRAFANA_ADMIN_PASSWORD`、`CLICKHOUSE_PASSWORD`（案 D） | `docker compose` が「〜が未設定です」と表示して止まる |
+| よく変えるもの | `SITE_ADDRESS` | `localhost` |
+| 任意 | 保持期間、イメージのバージョンなど（`.env.example` にコメントで既定値） | `compose.yaml` の既定値 |
 
 起動したら、ブラウザで次を開きます（`<SITE_ADDRESS>` は `.env` に書いた値。サーバー上で試すだけなら `SITE_ADDRESS=localhost` にして `https://localhost/...`）。
 
 | URL | 中身 |
 |---|---|
 | `https://<SITE_ADDRESS>/docs/` | 資料一覧（説明スライド・手引き・端末の設定手順）。**まずここ** |
-| `https://<SITE_ADDRESS>/` | Grafana（ユーザー `admin`、パスワードは `GRAFANA_ADMIN_PASSWORD`） |
+| `https://<SITE_ADDRESS>/` | Grafana（ユーザー `admin`、パスワードは `.env` の `GRAFANA_ADMIN_PASSWORD`） |
 | `https://<SITE_ADDRESS>/client/` | 利用者向けの `setup-client.sh`・`settings.json`・`caddy-root.crt` |
 
 ブラウザにも Caddy のルート証明書（`https://<SITE_ADDRESS>/client/caddy-root.crt`）を信頼させてください。
@@ -44,6 +55,9 @@ docker compose ps
 `/docs/` と `/client/` は認証なしで見られます。置いているのはリポジトリの `docs/` と `common/client/`、CA のルート証明書だけで、トークンやパスワードは含みません。
 
 同じホストで複数の案を同時に動かす場合は、443 番と 4318 番が重なるので `compose.yaml` の `ports` を変えてください。
+
+WSL で Windows 側のディレクトリ（`/mnt/c/...`）から動かす場合、案 D′ は `data/` をバインドマウントして所有者を変えるため、
+権限エラーになることがあります。その場合は WSL 側のディレクトリ（`~/...`）に clone してください。
 
 ## クライアント（Claude Code）の設定
 
