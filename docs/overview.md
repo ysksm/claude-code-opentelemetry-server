@@ -71,10 +71,12 @@ Claude Code ──HTTPS + トークン──▶ Caddy ──▶ Collector ──
 
 ## 自分の端末を設定する（macOS / Linux）
 
-管理者から次の 3 つを受け取ります：設定スクリプト [`setup-client.sh`](../deploy/common/client/setup-client.sh)、
-証明書 `caddy-root.crt`、サーバーの URL とトークン。
+サーバーのアドレス（`<SITE_ADDRESS>`、例 `otel.example.internal`）とトークンを管理者から受け取ります。
+設定スクリプトと証明書は `https://<SITE_ADDRESS>/client/` から落とせます（資料一覧は `https://<SITE_ADDRESS>/docs/`）。
 
 ```bash
+curl -fsSkO https://otel.example.internal/client/caddy-root.crt   # 最初の 1 回だけ検証なし
+curl -fsSO --cacert caddy-root.crt https://otel.example.internal/client/setup-client.sh
 chmod +x setup-client.sh
 OTEL_INGEST_TOKEN=<受け取ったトークン> ./setup-client.sh \
   --endpoint https://otel.example.internal --ca-cert ./caddy-root.crt
@@ -98,7 +100,7 @@ OTEL_INGEST_TOKEN=<受け取ったトークン> ./setup-client.sh \
 
 組織が managed settings で配っている場合は、すでに設定されています。その場合、利用者が自分で外すことはできません。
 
-Windows には、いまのところスクリプトがありません。[`settings.json`](../deploy/common/client/settings.json) の `env` を
+Windows には、いまのところスクリプトがありません。[`settings.json`](../deploy/common/client/settings.json)（`https://<SITE_ADDRESS>/client/settings.json`）の `env` を
 `%USERPROFILE%\.claude\settings.json` に手で入れ、`NODE_EXTRA_CA_CERTS` に証明書のパスを足してください。
 
 ## よくある質問

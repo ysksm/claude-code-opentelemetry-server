@@ -11,6 +11,9 @@ services:
       SITE_ADDRESS: ${SITE_ADDRESS}
     volumes:
       - ../common/Caddyfile:/etc/caddy/Caddyfile:ro
+      # https://<SITE_ADDRESS>/docs/ と /client/ で配る資料と設定スクリプト
+      - ../../docs:/srv/docs:ro
+      - ../common/client:/srv/client:ro
       - caddy-data:/data
     depends_on:
       collector:

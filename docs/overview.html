@@ -155,6 +155,24 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
 <div class="meta"><span>2026-10-12</span><span>対象：deploy/ の 3 案（B・D・D′）共通</span><span>taskapp OTEL-12</span></div>
 </section>
 
+<!-- access -->
+<section class="slide">
+<p class="eyebrow">Access</p>
+<h2>どこにアクセスするか：1 つのアドレスで全部そろう</h2>
+<p class="lead"><code>&lt;SITE_ADDRESS&gt;</code> はサーバーの <code>.env</code> に書いたホスト名（例 <code>otel.example.internal</code>）。分からなければ管理者に聞く。</p>
+<table>
+  <tr><th>開くもの</th><th>URL</th><th>だれが</th></tr>
+  <tr><td><b>資料一覧</b>（ここから始める）</td><td><code>https://&lt;SITE_ADDRESS&gt;/docs/</code></td><td>だれでも</td></tr>
+  <tr><td>管理画面（Grafana）</td><td><code>https://&lt;SITE_ADDRESS&gt;/</code></td><td>運用者・閲覧者（要アカウント）</td></tr>
+  <tr><td>端末の設定ファイル（スクリプト・証明書）</td><td><code>https://&lt;SITE_ADDRESS&gt;/client/</code></td><td>利用者</td></tr>
+  <tr><td>データの送り先</td><td><code>https://&lt;SITE_ADDRESS&gt;/v1/…</code></td><td>Claude Code（ブラウザでは開かない）</td></tr>
+</table>
+<div class="cols cols-2" style="flex:0">
+  <div class="callout">ブラウザが証明書を警告するときは、<code>/client/caddy-root.crt</code> を落として OS の信頼ストアに入れる（社内 CA のため）。</div>
+  <div class="callout ai">サーバー上で試すだけなら <code>SITE_ADDRESS=localhost</code> にして <code>https://localhost/docs/</code>。</div>
+</div>
+</section>
+
 <!-- 3 why -->
 <section class="slide">
 <p class="eyebrow">1. 目的</p>
@@ -272,11 +290,10 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
 <div class="cols cols-25">
   <div class="stack">
     <div class="panel">
-      <h3>管理者から受け取るもの</h3>
+      <h3>用意するもの</h3>
       <ul class="small">
-        <li><code>setup-client.sh</code>（<code>deploy/common/client/</code>）</li>
-        <li><code>caddy-root.crt</code>（社内 CA の証明書）</li>
-        <li>サーバーの URL とトークン</li>
+        <li><code>https://&lt;SITE_ADDRESS&gt;/client/</code> から <code>setup-client.sh</code> と <code>caddy-root.crt</code>（社内 CA の証明書）を落とす</li>
+        <li>トークンは管理者から受け取る（Web には置いていない）</li>
       </ul>
     </div>
     <div class="panel green">
@@ -326,7 +343,7 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
   </div>
   <div class="panel amber">
     <h3>Windows</h3>
-    <p class="small">スクリプトはまだない。<code>deploy/common/client/settings.json</code> の <code>env</code> を手で入れる。</p>
+    <p class="small">スクリプトはまだない。<code>https://&lt;SITE_ADDRESS&gt;/client/settings.json</code> の <code>env</code> を手で入れる。</p>
     <ol class="small" style="margin-top:6px">
       <li><code>%USERPROFILE%\.claude\settings.json</code> を開く</li>
       <li><code>env</code> にキーを足し、URL とトークンを書き換える</li>
@@ -366,6 +383,7 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
 <section class="slide">
 <p class="eyebrow">Summary</p>
 <h2>まとめと資料</h2>
+<div class="callout ai">資料はすべて <code>https://&lt;SITE_ADDRESS&gt;/docs/</code> から開ける。</div>
 <div class="cols cols-2">
   <div class="panel pw">
     <h3>押さえておくこと</h3>

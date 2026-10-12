@@ -18,6 +18,8 @@
 | 項目 | 値 |
 |---|---|
 | URL | `https://<SITE_ADDRESS>/`（`.env` の `SITE_ADDRESS`） |
+| 資料一覧 | `https://<SITE_ADDRESS>/docs/`（このページのスライド版・利用者向けの説明・設定手順） |
+| 端末の設定ファイル | `https://<SITE_ADDRESS>/client/`（`setup-client.sh`・`caddy-root.crt`。だれでも落とせる） |
 | ユーザー | `admin` |
 | パスワード | `.env` の `GRAFANA_ADMIN_PASSWORD` |
 | ダッシュボード | 左メニュー「Dashboards」→ フォルダ「Claude Code」→「Claude Code 利用状況（…）」 |
@@ -86,20 +88,17 @@
 
 ### 個人で設定してもらう（〜数十名、試験導入）
 
-1. サーバーで CA 証明書を取り出す（`tls internal` の場合だけ）。
+1. 利用者に `https://<SITE_ADDRESS>/docs/` を知らせる。説明・手順・スクリプト・証明書はそこからたどれます。
+   スクリプトと証明書は `https://<SITE_ADDRESS>/client/` に置いてあります（Caddy が配る。証明書は Caddy の内部 CA のもの）。
 
-   ```bash
-   docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
-   ```
-
-2. 利用者に次の 3 つを渡す。トークンはチャットに貼らず、パスワード管理ツールなどで渡してください。
-   - [`deploy/common/client/setup-client.sh`](../deploy/common/client/setup-client.sh)
-   - `caddy-root.crt`
-   - URL（`https://<SITE_ADDRESS>`）とトークン（`.env` の `OTEL_INGEST_TOKEN`）
+2. トークン（`.env` の `OTEL_INGEST_TOKEN`）を渡す。トークンだけは Web に置いていません。チャットに貼らず、パスワード管理ツールなどで渡してください。
 
 3. 利用者が実行する。
 
    ```bash
+   curl -fsSkO https://otel.example.internal/client/caddy-root.crt   # 最初の 1 回だけ検証なし
+   curl -fsSO --cacert caddy-root.crt https://otel.example.internal/client/setup-client.sh
+   chmod +x setup-client.sh
    OTEL_INGEST_TOKEN=<トークン> ./setup-client.sh \
      --endpoint https://otel.example.internal --ca-cert ./caddy-root.crt \
      --attributes department=eng,team.id=platform   # 部署で集計したい場合

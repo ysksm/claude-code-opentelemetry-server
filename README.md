@@ -13,3 +13,4 @@ Claude Code の利用状況（コスト・トークン・ツール実行・Skill
   - [`deploy/common/client/setup-client.sh`](deploy/common/client/setup-client.sh)：利用者の端末を設定するスクリプト（macOS / Linux）
 
 起動手順とクライアント設定は [`deploy/README.md`](deploy/README.md) を参照してください。
+起動後は `https://<SITE_ADDRESS>/docs/`（[`docs/index.html`](docs/index.html)）に資料一覧があり、Grafana（`/`）・説明スライド・端末の設定ファイル（`/client/`）へたどれます。

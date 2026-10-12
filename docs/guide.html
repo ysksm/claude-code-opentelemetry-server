@@ -189,6 +189,24 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
 </div>
 </section>
 
+<!-- access -->
+<section class="slide">
+<p class="eyebrow">Access</p>
+<h2>どこにアクセスするか：1 つのアドレスで全部そろう</h2>
+<p class="lead"><code>&lt;SITE_ADDRESS&gt;</code> はサーバーの <code>.env</code> に書いたホスト名（例 <code>otel.example.internal</code>）。分からなければ管理者に聞く。</p>
+<table>
+  <tr><th>開くもの</th><th>URL</th><th>だれが</th></tr>
+  <tr><td><b>資料一覧</b>（ここから始める）</td><td><code>https://&lt;SITE_ADDRESS&gt;/docs/</code></td><td>だれでも</td></tr>
+  <tr><td>管理画面（Grafana）</td><td><code>https://&lt;SITE_ADDRESS&gt;/</code></td><td>運用者・閲覧者（要アカウント）</td></tr>
+  <tr><td>端末の設定ファイル（スクリプト・証明書）</td><td><code>https://&lt;SITE_ADDRESS&gt;/client/</code></td><td>利用者</td></tr>
+  <tr><td>データの送り先</td><td><code>https://&lt;SITE_ADDRESS&gt;/v1/…</code></td><td>Claude Code（ブラウザでは開かない）</td></tr>
+</table>
+<div class="cols cols-2" style="flex:0">
+  <div class="callout">ブラウザが証明書を警告するときは、<code>/client/caddy-root.crt</code> を落として OS の信頼ストアに入れる（社内 CA のため）。</div>
+  <div class="callout ai">サーバー上で試すだけなら <code>SITE_ADDRESS=localhost</code> にして <code>https://localhost/docs/</code>。</div>
+</div>
+</section>
+
 <!-- 3 why -->
 <section class="slide">
 <p class="eyebrow">1. 目的</p>
@@ -306,11 +324,10 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
 <div class="cols cols-25">
   <div class="stack">
     <div class="panel">
-      <h3>管理者から受け取るもの</h3>
+      <h3>用意するもの</h3>
       <ul class="small">
-        <li><code>setup-client.sh</code>（<code>deploy/common/client/</code>）</li>
-        <li><code>caddy-root.crt</code>（社内 CA の証明書）</li>
-        <li>サーバーの URL とトークン</li>
+        <li><code>https://&lt;SITE_ADDRESS&gt;/client/</code> から <code>setup-client.sh</code> と <code>caddy-root.crt</code>（社内 CA の証明書）を落とす</li>
+        <li>トークンは管理者から受け取る（Web には置いていない）</li>
       </ul>
     </div>
     <div class="panel green">
@@ -352,7 +369,7 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
 <div class="cols cols-2">
   <div class="stack">
     <table class="small nowrap">
-      <tr><th>URL</th><td><code>https://&lt;SITE_ADDRESS&gt;/</code></td></tr>
+      <tr><th>URL</th><td><code>https://&lt;SITE_ADDRESS&gt;/</code>（資料は <code>/docs/</code>）</td></tr>
       <tr><th>管理者</th><td><code>admin</code> ／ <code>.env</code> の <code>GRAFANA_ADMIN_PASSWORD</code></td></tr>
       <tr><th>場所</th><td>Dashboards → フォルダ「Claude Code」→「Claude Code 利用状況（…）」</td></tr>
       <tr><th>期間</th><td>右上で選ぶ（既定 Last 7 days）。全パネルに効く</td></tr>
@@ -435,11 +452,8 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
 <p class="eyebrow">8. 利用者の追加</p>
 <h2>オンボーディングは 4 ステップ</h2>
 <div class="road">
-  <div class="panel"><div class="no">1</div><h3>証明書を取り出す</h3><p class="small">内部 CA のときだけ。</p><pre class="term xs" style="margin-top:6px">docker compose cp \
- caddy:/data/caddy/pki/\
-authorities/local/root.crt \
- ./caddy-root.crt</pre></div>
-  <div class="panel"><div class="no">2</div><h3>3 点を渡す</h3><p class="small">スクリプト、<code>caddy-root.crt</code>、URL とトークン。トークンはチャットに貼らず、パスワード管理ツールなどで。</p></div>
+  <div class="panel"><div class="no">1</div><h3>URL を知らせる</h3><p class="small"><code>https://&lt;SITE_ADDRESS&gt;/docs/</code>。手順・スクリプト・証明書はそこからたどれる。</p></div>
+  <div class="panel"><div class="no">2</div><h3>トークンを渡す</h3><p class="small">トークンだけは Web に置いていない。チャットに貼らず、パスワード管理ツールなどで渡す。</p></div>
   <div class="panel"><div class="no">3</div><h3>利用者が実行</h3><p class="small"><code>setup-client.sh</code> を実行し、Claude Code を再起動してもらう。</p></div>
   <div class="panel"><div class="no">4</div><h3>届いたか確かめる</h3><p class="small">「利用者別コスト」にそのメールアドレスが出れば完了。出なければ利用者に <code>--check</code>。</p></div>
 </div>
@@ -541,6 +555,7 @@ docker compose logs \
 <section class="slide">
 <p class="eyebrow">Summary</p>
 <h2>まとめと資料</h2>
+<div class="callout ai">資料はすべて <code>https://&lt;SITE_ADDRESS&gt;/docs/</code> から開ける。</div>
 <div class="cols cols-2">
   <div class="stack">
     <div class="panel pw">

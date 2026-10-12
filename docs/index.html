@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OTel 資料一覧</title>
+<style>
+:root {
+  --paper: #F7F4EF; --paper-2: #EEE8DF; --ink: #221A14; --ink-2: #54483E; --ink-3: #8A7D72; --rule: #DDD3C7;
+  --pw: #B4532F; --pw-soft: #F6DFD3; --ai: #2F6FBF; --green: #3C7A4E; --card: #fff;
+  --body: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --mono: "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #1B1511; --paper-2: #2A221C; --ink: #F0E6DC; --ink-2: #CFC2B6; --ink-3: #A08E80; --rule: #3A3029;
+    --pw: #F2A27E; --pw-soft: #3A2419; --ai: #8FB8EA; --green: #8CC79E; --card: #231C17;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--body); line-height: 1.7; }
+main { max-width: 880px; margin: 0 auto; padding: 40px 16px 64px; }
+h1 { font-size: clamp(22px, 5vw, 28px); overflow-wrap: anywhere; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 36px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+p { margin: 0 0 8px; }
+.lead { color: var(--ink-2); }
+.muted { color: var(--ink-3); font-size: 14px; }
+code { font-family: var(--mono); font-size: .9em; background: var(--paper-2); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+a { color: var(--pw); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.card { background: var(--card); border: 1px solid var(--rule); border-top: 3px solid var(--pw); border-radius: 8px; padding: 14px 16px; }
+.card.ai { border-top-color: var(--ai); } .card.green { border-top-color: var(--green); }
+.card h3 { margin: 0 0 4px; font-size: 16px; }
+.card h3 a { text-decoration: none; }
+.card p { font-size: 14px; color: var(--ink-2); }
+.card .sub { font-size: 13px; }
+pre { background: #1B1511; color: #F0E6DC; border-radius: 8px; padding: 12px 14px; font-family: var(--mono); font-size: 13px; overflow-x: auto; margin: 8px 0; }
+main > * { min-width: 0; }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+<h1>Claude Code 利用状況 — 資料一覧</h1>
+<p class="lead">このサーバーで見られる管理画面・資料・設定ファイルの入口です。</p>
+
+<h2>どこにアクセスするか</h2>
+<div class="tbl"><table>
+  <tr><th>開くもの</th><th>URL</th><th>だれが</th></tr>
+  <tr><td>管理画面（Grafana）</td><td><a href="/"><code id="u-root">/</code></a></td><td>運用者・閲覧者（要アカウント）</td></tr>
+  <tr><td>この資料一覧</td><td><a href="./"><code id="u-docs">/docs/</code></a></td><td>だれでも</td></tr>
+  <tr><td>端末の設定ファイル</td><td><a href="/client/"><code id="u-client">/client/</code></a></td><td>利用者</td></tr>
+  <tr><td>データの送り先（Claude Code が使う）</td><td><code id="u-otlp">/v1/…</code></td><td>Claude Code（ブラウザでは開かない）</td></tr>
+</table></div>
+
+<h2>利用者向け</h2>
+<div class="cards">
+  <div class="card">
+    <h3><a href="overview.html">利用状況の収集について（スライド）</a></h3>
+    <p>何を集め、誰が見て、どのくらい残るのか。端末の設定方法とよくある質問。</p>
+    <p class="sub"><a href="overview.md">文書版（overview.md）</a></p>
+  </div>
+  <div class="card green">
+    <h3><a href="/client/">端末の設定ファイル</a></h3>
+    <p><code>setup-client.sh</code>（macOS / Linux）と、サーバーの証明書 <code>caddy-root.crt</code>。</p>
+  </div>
+</div>
+
+<h2>運用者・閲覧者向け</h2>
+<div class="cards">
+  <div class="card ai">
+    <h3><a href="admin-guide.html">管理画面の利用の手引き（スライド）</a></h3>
+    <p>Grafana の開き方と読み方、利用者の追加、アカウント、日々の運用、困ったとき。</p>
+    <p class="sub"><a href="admin-guide.md">文書版（admin-guide.md）</a></p>
+  </div>
+  <div class="card ai">
+    <h3><a href="guide.html">利用状況の収集と見方（スライド）</a></h3>
+    <p>上の 2 つを 1 本にまとめた説明会用のスライド。</p>
+  </div>
+  <div class="card ai">
+    <h3><a href="architecture.html">収集サーバーの構成案（スライド）</a></h3>
+    <p>5 つの構成案の比較と、段階的な導入の進め方。</p>
+  </div>
+</div>
+<p class="muted">スライドは ← → で移動、O で一覧、F で全画面、P で印刷できます。</p>
+
+<h2>端末を設定する（macOS / Linux）</h2>
+<p>トークンは管理者から受け取ってください（このページにはありません）。</p>
+<pre id="setup">curl -fsSkO https://&lt;このサーバー&gt;/client/caddy-root.crt
+curl -fsSO --cacert caddy-root.crt https://&lt;このサーバー&gt;/client/setup-client.sh
+chmod +x setup-client.sh
+OTEL_INGEST_TOKEN=&lt;トークン&gt; ./setup-client.sh \
+  --endpoint https://&lt;このサーバー&gt; --ca-cert ./caddy-root.crt</pre>
+<p class="muted">最初の証明書だけは検証なし（<code>-k</code>）で取ることになります。気になる場合は
+<code>openssl x509 -in caddy-root.crt -noout -fingerprint -sha256</code> の値を管理者に確かめてください。</p>
+</main>
+<script>
+// 開いているホスト名で URL と手順を埋める
+(() => {
+  const origin = location.protocol === "file:" ? "https://<SITE_ADDRESS>" : location.origin;
+  const set = (id, path) => { const el = document.getElementById(id); if (el) el.textContent = origin + path; };
+  set("u-root", "/"); set("u-docs", "/docs/"); set("u-client", "/client/"); set("u-otlp", "/v1/…");
+  const pre = document.getElementById("setup");
+  if (pre && location.protocol !== "file:") pre.textContent = pre.textContent.split("https://<このサーバー>").join(origin);
+})();
+</script>
+</body>
+</html>
