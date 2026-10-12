@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>管理画面の手引き</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;600&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F7F4EF; --paper-2: #EEE8DF;
+  --ink: #221A14; --ink-2: #54483E; --ink-3: #8A7D72; --rule: #DDD3C7;
+  --pw: #B4532F; --pw-soft: #F6DFD3;
+  --ai: #2F6FBF; --ai-soft: #D9E7F8;
+  --green: #3C7A4E; --green-soft: #DCEEDF;
+  --amber: #B7791F; --amber-soft: #FBEBC8;
+  --red: #B4432F; --red-soft: #F6DAD5;
+  --violet: #6B4FA8; --violet-soft: #E6DFF4;
+  --term: #1B1511; --term-ink: #F0E6DC; --term-dim: #A08E80;
+  --term-key: #F2A27E; --term-str: #9EC9E0; --term-num: #F5C97A;
+  --display: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --body: "IBM Plex Sans JP", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--term); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; overflow: hidden; }
+#stage { position: fixed; inset: 0; padding: 16px; }
+.deck { width: 1280px; height: 720px; position: absolute; left: 50%; top: 50%; transform-origin: 0 0; }
+.slide { position: absolute; inset: 0; background: var(--paper); color: var(--ink); padding: 48px 68px 56px; display: none; flex-direction: column; gap: 18px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+.slide.active { display: flex; }
+.slide::after { content: attr(data-n) " / " attr(data-total); position: absolute; right: 68px; bottom: 20px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.slide::before { content: "Claude Code × OpenTelemetry — 管理画面の利用の手引き"; position: absolute; left: 68px; bottom: 20px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); letter-spacing: .04em; }
+.slide.cover::before, .slide.cover::after { display: none; }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--pw); margin: 0; }
+h1 { font-family: var(--display); font-weight: 900; font-size: 60px; line-height: 1.15; margin: 0; }
+h2 { font-family: var(--display); font-weight: 700; font-size: 32px; line-height: 1.25; margin: 0; }
+h3 { font-family: var(--display); font-weight: 700; font-size: 17px; margin: 0 0 6px; }
+p { margin: 0; }
+.lead { font-size: 18px; color: var(--ink-2); }
+.muted { color: var(--ink-3); }
+.small { font-size: 14px; } .xs { font-size: 12.5px; }
+code, .mono { font-family: var(--mono); }
+p code, li code, td code, th code, .box code { background: var(--paper-2); padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+ul, ol { margin: 0; padding-left: 1.3em; }
+li { margin: 3px 0; }
+li::marker { color: var(--pw); }
+b, strong { font-weight: 600; }
+a { color: var(--pw); text-decoration: none; border-bottom: 1px solid var(--pw-soft); }
+.cols { display: grid; gap: 22px; flex: 1; min-height: 0; }
+.cols-2 { grid-template-columns: 1fr 1fr; }
+.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.cols-52 { grid-template-columns: 1.2fr 1fr; }
+.cols-25 { grid-template-columns: 1fr 1.25fr; }
+.stack { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.panel { background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 12px 16px; }
+.panel.pw { border-top: 3px solid var(--pw); } .panel.ai { border-top: 3px solid var(--ai); }
+.panel.green { border-top: 3px solid var(--green); } .panel.amber { border-top: 3px solid var(--amber); }
+.panel.red { border-top: 3px solid var(--red); } .panel.violet { border-top: 3px solid var(--violet); }
+.tag { display: inline-block; font-family: var(--mono); font-size: 11.5px; padding: 1px 8px; border-radius: 999px; background: var(--pw-soft); color: var(--pw); vertical-align: middle; white-space: nowrap; }
+.tag.ai { background: var(--ai-soft); color: var(--ai); } .tag.green { background: var(--green-soft); color: var(--green); }
+.tag.amber { background: var(--amber-soft); color: var(--amber); } .tag.red { background: var(--red-soft); color: var(--red); }
+.tag.violet { background: var(--violet-soft); color: var(--violet); }
+ul.pm { list-style: none; padding-left: 1.4em; }
+ul.pm li { text-indent: -1.4em; }
+ul.pm li.good::before { content: "○ "; color: var(--green); font-weight: 700; }
+ul.pm li.bad::before { content: "△ "; color: var(--red); font-weight: 700; }
+.term { background: var(--term); color: var(--term-ink); border-radius: 8px; padding: 12px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; overflow: hidden; white-space: pre; margin: 0; }
+.term .k { color: var(--term-key); } .term .s { color: var(--term-str); } .term .n { color: var(--term-num); } .term .c { color: var(--term-dim); font-style: italic; }
+.term.sm { font-size: 11.5px; }
+.term.xs { font-size: 11px; line-height: 1.36; padding: 10px 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); font-size: 12.5px; letter-spacing: .04em; }
+tr:last-child td { border-bottom: none; }
+.tight td, .tight th { padding: 4px 8px; }
+.callout { background: var(--pw-soft); border-left: 4px solid var(--pw); border-radius: 6px; padding: 9px 14px; font-size: 14px; }
+.callout.ai { background: var(--ai-soft); border-left-color: var(--ai); }
+.callout.red { background: var(--red-soft); border-left-color: var(--red); }
+.callout.green { background: var(--green-soft); border-left-color: var(--green); }
+.src { font-family: var(--mono); font-size: 11px; color: var(--ink-3); border-top: 1px dashed var(--rule); padding-top: 6px; margin-top: auto; }
+.src a { color: var(--ink-3); border-bottom-color: var(--rule); }
+/* ---------- architecture diagram ---------- */
+.arch { display: flex; align-items: center; gap: 8px; }
+.arch .col { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.box { background: #fff; border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; font-size: 13px; line-height: 1.45; }
+.box .t { font-family: var(--display); font-weight: 700; font-size: 15px; }
+.box .p { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.box.client { background: var(--paper-2); }
+.box.edge { border-color: var(--amber); background: var(--amber-soft); }
+.box.col-otel { border-color: var(--pw); background: var(--pw-soft); }
+.box.store { border-color: var(--ai); background: var(--ai-soft); }
+.box.viz { border-color: var(--green); background: var(--green-soft); }
+.box.dashed { border-style: dashed; background: transparent; }
+.arr { align-self: center; font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-align: center; line-height: 1.25; min-width: 54px; }
+.arr b { display: block; font-size: 20px; color: var(--pw); line-height: 1; }
+.compose { font-family: var(--mono); font-size: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.compose span { background: var(--term); color: var(--term-ink); border-radius: 4px; padding: 2px 8px; }
+/* ---------- cover ---------- */
+.cover { background: var(--term); color: var(--term-ink); justify-content: flex-end; padding-bottom: 80px; }
+.cover .eyebrow { color: var(--term-key); }
+.cover h1 { color: #fff; font-size: 66px; }
+.cover .lead { color: var(--term-ink); max-width: 46em; }
+.cover .meta { font-family: var(--mono); font-size: 13px; color: var(--term-dim); display: flex; gap: 28px; }
+.cover .frame { position: absolute; right: 60px; top: 56px; width: 520px; font-family: var(--mono); font-size: 12.5px; color: var(--term-dim); line-height: 1.6; white-space: pre; border-left: 2px solid var(--pw); padding-left: 16px; }
+.cover .frame .k { color: var(--term-key); } .cover .frame .s { color: var(--term-str); }
+/* ---------- option card / matrix ---------- */
+.opt { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 12px; flex: 1; min-height: 0; }
+.opt .panel { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.opt .letter { font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1; }
+.dots { font-family: var(--mono); letter-spacing: 1px; color: var(--pw); white-space: nowrap; }
+.dots .off { color: var(--rule); }
+td.c, th.c { text-align: center; }
+.road { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.road .panel { position: relative; }
+.road .no { font-family: var(--display); font-weight: 900; font-size: 26px; color: var(--pw); line-height: 1.1; }
+.dash { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 5px; font-size: 12px; }
+.dash div { background: var(--paper-2); border-radius: 4px; padding: 5px 8px; }
+.dash .q { background: var(--pw-soft); }
+.dash .h { grid-column: span 2; padding: 9px 8px; }
+.dash .lbl { background: none; color: var(--ink-3); font-family: var(--mono); font-size: 11px; align-self: center; white-space: nowrap; }
+.nowrap th { white-space: nowrap; }
+#hud { position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; color: var(--term-dim); opacity: .7; }
+:focus-visible { outline: 2px solid var(--pw); outline-offset: 2px; }
+body.overview #stage { display: block; overflow: auto; padding: 24px; }
+body.overview .deck { position: static; width: auto; height: auto; transform: none !important; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+body.overview .slide { display: flex; position: relative; width: 100%; aspect-ratio: 16/9; height: auto; zoom: .32; cursor: pointer; }
+@media print {
+  body { overflow: visible; background: #fff; }
+  #stage { position: static; padding: 0; }
+  .deck { position: static; width: 1280px; height: auto; transform: none !important; }
+  .slide { display: flex; position: relative; height: 720px; page-break-after: always; box-shadow: none; }
+  #hud { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="stage"><div class="deck" id="deck">
+
+<!-- cover -->
+<section class="slide cover">
+<div class="frame"><span class="k">https://otel.example.internal/</span>
+  Dashboards
+  └ Claude Code
+     └ Claude Code 利用状況
+
+<span class="c"># サーバー</span>
+<span class="k">$</span> docker compose ps
+<span class="k">$</span> docker compose logs collector</div>
+<p class="eyebrow">Admin guide · 運用者と閲覧者へ</p>
+<h1>管理画面の<br>利用の手引き</h1>
+<p class="lead">Grafana のダッシュボードの開き方と読み方、利用者の追加、閲覧アカウント、日々の運用と困ったときの確認。文書版は docs/admin-guide.md。</p>
+<div class="meta"><span>2026-10-12</span><span>対象：deploy/ の 3 案（B・D・D′）共通</span><span>taskapp OTEL-12</span></div>
+</section>
+
+<!-- agenda -->
+<section class="slide">
+<p class="eyebrow">Contents</p>
+<h2>この資料の流れ</h2>
+<div class="cols cols-2">
+  <div class="panel ai">
+    <h3>見る人向け</h3>
+    <ol class="small">
+      <li>管理画面を開く</li>
+      <li>ダッシュボードの読み方（12 パネル、数値の注意、よく使う操作）</li>
+    </ol>
+  </div>
+  <div class="panel pw">
+    <h3>運用する人向け</h3>
+    <ol class="small" start="3">
+      <li>利用者の追加（オンボーディング）</li>
+      <li>閲覧アカウントと権限</li>
+      <li>日々の運用（確認・トークン・保持期間・バックアップ・更新）</li>
+      <li>困ったとき</li>
+    </ol>
+  </div>
+</div>
+<div class="callout ai">資料はすべて <code>https://&lt;SITE_ADDRESS&gt;/docs/</code> から開ける。サーバーの起動手順は <code>deploy/README.md</code>。</div>
+</section>
+
+<!-- access -->
+<section class="slide">
+<p class="eyebrow">Access</p>
+<h2>どこにアクセスするか：1 つのアドレスで全部そろう</h2>
+<p class="lead"><code>&lt;SITE_ADDRESS&gt;</code> はサーバーの <code>.env</code> に書いたホスト名（例 <code>otel.example.internal</code>）。分からなければ管理者に聞く。</p>
+<table>
+  <tr><th>開くもの</th><th>URL</th><th>だれが</th></tr>
+  <tr><td><b>資料一覧</b>（ここから始める）</td><td><code>https://&lt;SITE_ADDRESS&gt;/docs/</code></td><td>だれでも</td></tr>
+  <tr><td>管理画面（Grafana）</td><td><code>https://&lt;SITE_ADDRESS&gt;/</code></td><td>運用者・閲覧者（要アカウント）</td></tr>
+  <tr><td>端末の設定ファイル（スクリプト・証明書）</td><td><code>https://&lt;SITE_ADDRESS&gt;/client/</code></td><td>利用者</td></tr>
+  <tr><td>データの送り先</td><td><code>https://&lt;SITE_ADDRESS&gt;/v1/…</code></td><td>Claude Code（ブラウザでは開かない）</td></tr>
+</table>
+<div class="cols cols-2" style="flex:0">
+  <div class="callout">ブラウザが証明書を警告するときは、<code>/client/caddy-root.crt</code> を落として OS の信頼ストアに入れる（社内 CA のため）。</div>
+  <div class="callout ai">サーバー上で試すだけなら <code>SITE_ADDRESS=localhost</code> にして <code>https://localhost/docs/</code>。</div>
+</div>
+</section>
+
+<!-- 8 open grafana -->
+<section class="slide">
+<p class="eyebrow">1. 管理画面を開く</p>
+<h2>Grafana にログインして「Claude Code 利用状況」を開く</h2>
+<div class="cols cols-2">
+  <div class="stack">
+    <table class="small nowrap">
+      <tr><th>URL</th><td><code>https://&lt;SITE_ADDRESS&gt;/</code>（資料は <code>/docs/</code>）</td></tr>
+      <tr><th>管理者</th><td><code>admin</code> ／ <code>.env</code> の <code>GRAFANA_ADMIN_PASSWORD</code></td></tr>
+      <tr><th>場所</th><td>Dashboards → フォルダ「Claude Code」→「Claude Code 利用状況（…）」</td></tr>
+      <tr><th>期間</th><td>右上で選ぶ（既定 Last 7 days）。全パネルに効く</td></tr>
+      <tr><th>更新</th><td>5 分ごとに自動</td></tr>
+    </table>
+    <div class="callout">ブラウザが証明書を警告するときは、<code>caddy-root.crt</code> を OS の信頼ストアに入れる。</div>
+  </div>
+  <div class="stack">
+    <div class="panel">
+      <h3>画面の構成（3 案とも同じ 12 パネル）</h3>
+<div class="dash">
+  <div class="q">コスト</div><div class="q">トークン</div><div class="q">セッション数</div><div class="q">利用者数</div><div class="lbl">期間合計</div>
+  <div class="h">モデル別コスト</div><div class="h">種類別トークン</div><div class="lbl">推移</div>
+  <div class="h">利用者別コスト</div><div class="h">リポジトリ別コスト</div><div class="lbl">誰が・どこで</div>
+  <div class="h">Skill の発動</div><div class="h">ツール実行の結果</div><div class="lbl">何に</div>
+  <div class="h">イベント種別ごとの件数</div><div class="h">拒否（B）／ Bash コマンド（D・D′）</div><div class="lbl">確認・監査</div>
+</div>
+    </div>
+    <p class="small muted">ファイルから読み込んでいるので画面上の変更は保存できない。「Save as」で複製するか、JSON を変えてプルリクエストを出す。</p>
+  </div>
+</div>
+</section>
+
+<!-- 9 panels -->
+<section class="slide">
+<p class="eyebrow">2. ダッシュボードの読み方</p>
+<h2>12 パネルで分かること</h2>
+<table class="tight small">
+  <tr><th>パネル</th><th>分かること</th><th>元のデータ</th></tr>
+  <tr><td>コスト ／ トークン ／ セッション数 ／ 利用者数</td><td>期間中の合計</td><td><code>cost.usage</code>・<code>token.usage</code>・<code>session.count</code></td></tr>
+  <tr><td>モデル別コスト</td><td>Opus・Sonnet・Haiku ごとの推移</td><td><code>model</code></td></tr>
+  <tr><td>種類別トークン</td><td>input ／ output ／ cacheRead ／ cacheCreation。キャッシュ読み取りが多いほど安い</td><td><code>type</code></td></tr>
+  <tr><td>利用者別コスト</td><td>人ごとの合計（多い順）</td><td><code>user.email</code></td></tr>
+  <tr><td>リポジトリ別コスト</td><td>どのリポジトリの作業に使ったか</td><td><code>vcs.repository.name</code></td></tr>
+  <tr><td>Skill の発動</td><td>利用者 × リポジトリ × Skill の回数と起動方法</td><td><code>skill_activated</code></td></tr>
+  <tr><td>ツール実行の結果</td><td>ツールごとの成功・失敗（D・D′ は平均時間も）</td><td><code>tool_result</code></td></tr>
+  <tr><td>イベント種別ごとの件数</td><td>届いているイベントの種類。データが来ているかの確認</td><td>全イベント</td></tr>
+  <tr><td>拒否されたツール実行 <span class="tag">B</span></td><td>利用者が許可しなかった操作</td><td><code>tool_decision</code></td></tr>
+  <tr><td>実行された Bash コマンド <span class="tag ai">D・D′</span></td><td>誰がどこで何を実行したか（監査）。<code>--tool-details</code> の端末だけ</td><td><code>tool_result</code></td></tr>
+</table>
+</section>
+
+<!-- 10 caveats -->
+<section class="slide">
+<p class="eyebrow">2. ダッシュボードの読み方</p>
+<h2>数値を読むときの注意</h2>
+<div class="cols cols-2">
+  <div class="stack">
+    <div class="panel red">
+      <h3>コストは概算</h3>
+      <p class="small">Claude Code がトークン数から計算した値で、<b>請求額とは一致しない</b>。サブスクリプションの席で使っている場合も、従量課金に換算した値が出る。</p>
+    </div>
+    <div class="panel amber">
+      <h3>反映の遅れ</h3>
+      <p class="small">D′ は変換の間隔（既定 5 分）だけ遅れる。端末がオフラインの間の分は出ない。</p>
+    </div>
+  </div>
+  <div class="stack">
+    <div class="panel ai">
+      <h3>案ごとの集計</h3>
+      <ul class="small">
+        <li><b>B</b>：外挿しない <code>increase(…[…] anchored)</code> で数える。メトリクスのコストとイベントの <code>cost_usd</code> の合計が一致することを実測で確認済み。推移は表示幅に応じた区間ごと。</li>
+        <li><b>D・D′</b>：推移は 1 時間ごと。delta の値をそのまま合計する。</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>よく使う操作</h3>
+      <ul class="small">
+        <li>先月の利用者別コスト：期間「Previous month」→ パネルの ⋮ → Inspect → Data → Download CSV</li>
+        <li>1 パネルを大きく：マウスを載せて <code>v</code></li>
+        <li>SQL で分析（D・D′）：<code>deploy/README.md</code> の例</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- usage -->
+<section class="slide">
+<p class="eyebrow">2. ダッシュボードの読み方</p>
+<h2>よく使う操作</h2>
+<table class="small">
+  <tr><th>やりたいこと</th><th>操作</th></tr>
+  <tr><td>先月の利用者別コストを出す</td><td>時間範囲で「Previous month」→「利用者別コスト」のパネルメニュー（⋮）→ Inspect → Data →「Download CSV」</td></tr>
+  <tr><td>特定のリポジトリだけ見る</td><td>「リポジトリ別コスト」で確認。詳しくは Explore で <code>vcs_repository_name</code>（B）／ <code>LogAttributes['vcs.repository.name']</code>（D）で絞る</td></tr>
+  <tr><td>1 つのパネルを大きく見る</td><td>パネルにマウスを載せて <code>v</code>（もう一度で戻る）</td></tr>
+  <tr><td>期間を拡大する</td><td>時系列グラフ上でドラッグ</td></tr>
+  <tr><td>画面を共有する</td><td>右上の「Share」→ リンクをコピー（相手にも Grafana のアカウントが必要）</td></tr>
+  <tr><td>SQL で分析する（D・D′）</td><td><code>deploy/README.md</code> の「分析 SQL の例」</td></tr>
+</table>
+<div class="callout">ダッシュボードはファイルから読み込んでいる（<code>allowUiUpdates: false</code>）。変えたいときは「Save as」で複製するか、<code>deploy/&lt;案&gt;/grafana/dashboards/claude-code.json</code> を 3 案そろえて変え、プルリクエストを出す。</div>
+</section>
+
+<!-- 11 onboarding -->
+<section class="slide">
+<p class="eyebrow">3. 利用者の追加</p>
+<h2>オンボーディングは 4 ステップ</h2>
+<div class="road">
+  <div class="panel"><div class="no">1</div><h3>URL を知らせる</h3><p class="small"><code>https://&lt;SITE_ADDRESS&gt;/docs/</code>。手順・スクリプト・証明書はそこからたどれる。</p></div>
+  <div class="panel"><div class="no">2</div><h3>トークンを渡す</h3><p class="small">トークンだけは Web に置いていない。チャットに貼らず、パスワード管理ツールなどで渡す。</p></div>
+  <div class="panel"><div class="no">3</div><h3>利用者が実行</h3><p class="small"><code>setup-client.sh</code> を実行し、Claude Code を再起動してもらう。</p></div>
+  <div class="panel"><div class="no">4</div><h3>届いたか確かめる</h3><p class="small">「利用者別コスト」にそのメールアドレスが出れば完了。出なければ利用者に <code>--check</code>。</p></div>
+</div>
+<div class="cols cols-2" style="flex:0">
+  <div class="panel pw">
+    <h3>組織で一括して配る</h3>
+    <ul class="small">
+      <li>端末ごとに <code>sudo … --scope managed</code>（利用者は外せない）</li>
+      <li>MDM なら <code>--print</code> の出力を managed-settings.json として配る</li>
+    </ul>
+  </div>
+  <div class="panel green">
+    <h3>部署・チームで集計する</h3>
+    <p class="small"><code>--attributes department=eng,team.id=platform</code>。B では Prometheus のラベル（<code>department</code>・<code>team.id</code>・<code>cost_center</code>・<code>enduser.id</code>）、D・D′ では resource attributes に入る。</p>
+  </div>
+</div>
+</section>
+
+<!-- 12 accounts -->
+<section class="slide">
+<p class="eyebrow">4. 閲覧アカウント</p>
+<h2>見る人には Viewer のアカウントを作る</h2>
+<div class="cols cols-25">
+  <div class="panel">
+    <h3>作り方</h3>
+    <ol class="small">
+      <li><code>admin</code> でログイン</li>
+      <li>Administration → Users and access → Users → <b>New user</b></li>
+      <li>名前・メール・ユーザー名・初期パスワードを入れる</li>
+      <li>Organizations で役割を選ぶ</li>
+    </ol>
+    <p class="small muted" style="margin-top:8px"><code>admin</code> は管理専用にして、普段は使わない。</p>
+  </div>
+  <div class="stack">
+    <table class="small">
+      <tr><th>役割</th><th>できること</th><th>渡す相手</th></tr>
+      <tr><td><span class="tag green">Viewer</span></td><td>ダッシュボードを見る、CSV を落とす</td><td>チームリーダー、管理部門</td></tr>
+      <tr><td><span class="tag ai">Editor</span></td><td>ダッシュボードの複製・作成、Explore でクエリ</td><td>分析する人</td></tr>
+      <tr><td><span class="tag red">Admin</span></td><td>ユーザー管理、データソースの変更</td><td>サーバーの運用者だけ</td></tr>
+    </table>
+    <div class="callout red">利用者別コストや Bash コマンドは個人の作業内容に関わる。<b>誰に見せるかを先に決めて</b>から、必要な人だけに作る。</div>
+  </div>
+</div>
+</section>
+
+<!-- 13 ops -->
+<section class="slide">
+<p class="eyebrow">5. 日々の運用</p>
+<h2>確認・トークンの入れ替え・バックアップ</h2>
+<div class="cols cols-3">
+  <div class="panel green">
+    <h3>届いているか</h3>
+<pre class="term xs">docker compose ps
+docker compose logs \
+  --since 10m collector</pre>
+    <p class="small" style="margin-top:6px">ダッシュボードの「イベント種別ごとの件数」が増えていれば、保存先まで届いている。</p>
+  </div>
+  <div class="panel amber">
+    <h3>トークンの入れ替え</h3>
+    <p class="small">漏れたとき・退職者が出たとき。</p>
+    <ol class="small">
+      <li><code>.env</code> の <code>OTEL_INGEST_TOKEN</code> を新しい値に（<code>openssl rand -hex 32</code>）</li>
+      <li><code>docker compose up -d collector</code></li>
+      <li>全員に <code>setup-client.sh</code> をもう一度実行してもらう</li>
+    </ol>
+  </div>
+  <div class="panel ai">
+    <h3>バックアップ</h3>
+    <ul class="small">
+      <li>B：<code>prometheus-data</code>、<code>loki-data</code></li>
+      <li>D：<code>clickhouse-data</code></li>
+      <li>D′：<code>data/</code>（<code>raw/</code> が原本）</li>
+      <li>共通：<code>grafana-data</code>、<b><code>caddy-data</code></b>（CA の鍵。失うと証明書の配り直し）、<code>.env</code></li>
+    </ul>
+  </div>
+</div>
+<p class="small muted">バージョンを上げるときは <code>.env</code> の <code>*_VERSION</code> を変えてプルリクエスト → <code>docker compose pull &amp;&amp; docker compose up -d</code>。</p>
+</section>
+
+<!-- retention -->
+<section class="slide">
+<p class="eyebrow">5. 日々の運用</p>
+<h2>保持期間とディスク、バージョンの更新</h2>
+<div class="cols cols-52">
+  <div class="stack">
+    <table class="small">
+      <tr><th>案</th><th>設定（<code>.env</code>）</th><th>既定</th></tr>
+      <tr><td>B</td><td><code>PROMETHEUS_RETENTION</code>、<code>LOKI_RETENTION</code></td><td>400 日、90 日（2160h）</td></tr>
+      <tr><td>D</td><td><code>CLICKHOUSE_TTL</code>（テーブル作成時にだけ反映）</td><td>2 年（17520h）</td></tr>
+      <tr><td>D′</td><td><code>RAW_RETENTION_DAYS</code>（JSONL の原本）、<code>PARQUET_RETENTION_DAYS</code>（0 = 消さない）</td><td>400 日、消さない</td></tr>
+    </table>
+    <p class="small">変えたら <code>docker compose up -d</code> で反映。ディスクの使用量は <code>docker system df -v</code>（D′ は <code>du -sh data/*</code>）。</p>
+  </div>
+  <div class="stack">
+    <div class="panel ai">
+      <h3>バージョンを上げる</h3>
+      <ol class="small">
+        <li><code>.env</code> の <code>*_VERSION</code> を変えてプルリクエスト</li>
+        <li><code>docker compose pull</code>（D′ は <code>docker compose build</code> も）</li>
+        <li><code>docker compose up -d</code></li>
+      </ol>
+    </div>
+    <div class="callout">保持期間は組織の方針で決め、利用者にも知らせる（<code>docs/overview.html</code> に既定値を載せている）。</div>
+  </div>
+</div>
+</section>
+
+<!-- trouble-client -->
+<section class="slide">
+<p class="eyebrow">6. 困ったとき</p>
+<h2>症状から確かめること（利用者の端末）</h2>
+<table class="small">
+  <tr><th style="width:30%">症状</th><th>確かめること</th></tr>
+  <tr><td>ある利用者のデータが出ない</td><td>利用者に <code>setup-client.sh --check</code>。OK なら Claude Code を再起動したか（設定は起動時に読まれる）。リポジトリの <code>.claude/settings.json</code> に書いていないか（OTel の設定は無視される）</td></tr>
+  <tr><td><code>--check</code> が 401</td><td>トークンが違う。入れ替え前の古いトークンを使っていないか</td></tr>
+  <tr><td><code>--check</code> が「証明書を検証できません」</td><td><code>--ca-cert</code> で <code>caddy-root.crt</code> を渡したか。Caddy のボリュームを作り直して CA が変わっていないか</td></tr>
+  <tr><td><code>--check</code> は OK なのにデータが来ない</td><td><code>--check</code> は curl で確かめるので、Claude Code 側の証明書の読み込みまでは確かめていない。再起動したか確認し、だめなら <code>NODE_EXTRA_CA_CERTS=~/.claude/otel/ca.crt</code> をシェルの環境変数にも設定して試す</td></tr>
+  <tr><td>「サーバーに接続できません」</td><td>端末から 443 番に届くか（VPN・ファイアウォール）。<code>SITE_ADDRESS</code> の名前を引けるか</td></tr>
+</table>
+</section>
+
+<!-- trouble-server -->
+<section class="slide">
+<p class="eyebrow">6. 困ったとき</p>
+<h2>症状から確かめること（サーバーと画面）</h2>
+<table class="small">
+  <tr><th style="width:30%">症状</th><th>確かめること</th></tr>
+  <tr><td>ブラウザで Grafana が証明書エラー</td><td><code>caddy-root.crt</code> を OS の信頼ストアに入れる</td></tr>
+  <tr><td>全員分のデータが止まった</td><td><code>docker compose ps</code> と <code>docker compose logs collector</code>。D は ClickHouse、B は Prometheus・Loki が動いているか。ディスクが一杯になっていないか</td></tr>
+  <tr><td>D′ で直近のデータだけ出ない</td><td>変換の間隔（既定 5 分）を待つ。<code>docker compose logs converter</code></td></tr>
+  <tr><td>「実行された Bash コマンド」が空</td><td>利用者側で <code>--tool-details</code>（<code>OTEL_LOG_TOOL_DETAILS=1</code>）を付けていない。付けるかは組織の方針</td></tr>
+  <tr><td>リポジトリ別コストが空欄</td><td>Git リポジトリの外で使っている、または <code>OTEL_METRICS_INCLUDE_REPOSITORY</code> が入っていない</td></tr>
+  <tr><td>コストが請求額と合わない</td><td>ダッシュボードの値は概算（「数値を読むときの注意」）</td></tr>
+</table>
+</section>
+
+<!-- summary -->
+<section class="slide">
+<p class="eyebrow">Summary</p>
+<h2>まとめと資料</h2>
+<div class="callout ai">資料はすべて <code>https://&lt;SITE_ADDRESS&gt;/docs/</code> から開ける。</div>
+<div class="cols cols-2">
+  <div class="panel pw">
+    <h3>押さえておくこと</h3>
+    <ul class="small">
+      <li>ダッシュボードは 3 案とも同じ 12 パネル。期間は右上で選ぶ。</li>
+      <li>コストは<b>概算</b>。D′ は最大 5 分遅れる。</li>
+      <li>利用者の追加は <code>setup-client.sh</code> と証明書・URL・トークンを渡すだけ。</li>
+      <li>閲覧者は Viewer で、必要な人だけに。</li>
+      <li><code>caddy-data</code> と <code>.env</code> もバックアップする。</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>資料</h3>
+    <table class="tight small">
+      <tr><td><code>docs/admin-guide.md</code></td><td>この資料の文書版</td></tr>
+      <tr><td><code>docs/overview.html</code></td><td>利用者向けの説明（スライド）</td></tr>
+      <tr><td><code>deploy/README.md</code></td><td>サーバーの起動手順と案ごとの注意</td></tr>
+      <tr><td><code>deploy/common/client/setup-client.sh</code></td><td>端末の設定スクリプト</td></tr>
+    </table>
+  </div>
+</div>
+</section>
+
+</div></div>
+<div id="hud"><span class="kbd">←</span> <span class="kbd">→</span> 移動 · <span class="kbd">O</span> 一覧 · <span class="kbd">F</span> 全画面 · <span class="kbd">P</span> 印刷</div>
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const deck = document.getElementById('deck');
+  const total = slides.length;
+  slides.forEach((s, i) => { s.dataset.n = i + 1; s.dataset.total = total; s.tabIndex = -1; });
+  let cur = Math.min(Math.max(parseInt(location.hash.slice(1), 10) || 1, 1), total) - 1;
+  function show(i) {
+    cur = Math.min(Math.max(i, 0), total - 1);
+    slides.forEach((s, j) => s.classList.toggle('active', j === cur));
+    history.replaceState(null, '', '#' + (cur + 1));
+  }
+  function fit() {
+    if (document.body.classList.contains('overview')) return;
+    const w = innerWidth - 32, h = innerHeight - 32;
+    const k = Math.min(w / 1280, h / 720);
+    deck.style.transform = 'translate(' + (-640 * k) + 'px,' + (-360 * k) + 'px) scale(' + k + ')';
+  }
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const ov = document.body.classList.contains('overview');
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Enter') { if (!ov) { show(cur + 1); e.preventDefault(); } }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') { if (!ov) { show(cur - 1); e.preventDefault(); } }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(total - 1);
+    else if (e.key === 'o' || e.key === 'O' || (e.key === 'Escape' && ov)) { document.body.classList.toggle('overview'); fit(); }
+    else if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); }
+    else if (e.key === 'p' || e.key === 'P') { print(); }
+  });
+  deck.addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    if (document.body.classList.contains('overview')) {
+      const s = e.target.closest('.slide'); if (!s) return;
+      document.body.classList.remove('overview'); show(slides.indexOf(s)); fit();
+    } else if (e.clientX > innerWidth * 0.8) show(cur + 1);
+    else if (e.clientX < innerWidth * 0.2) show(cur - 1);
+  });
+  let tx = null;
+  addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchend', e => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) show(cur + (dx < 0 ? 1 : -1)); tx = null; });
+  addEventListener('hashchange', () => show((parseInt(location.hash.slice(1), 10) || 1) - 1));
+  addEventListener('resize', fit);
+  show(cur); fit();
+})();
+</script>
+</body>
+</html>

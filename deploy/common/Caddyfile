@@ -1,9 +1,12 @@
-# 3 案共通の入口。1 つのホスト名で OTLP と Grafana を受ける。
+# 3 案共通の入口。1 つのホスト名で OTLP・資料・Grafana を受ける。
 #   https://<SITE_ADDRESS>/v1/{metrics,logs,traces} → collector:4318
+#   https://<SITE_ADDRESS>/docs/                    → 説明資料（docs/ のスライドと文書）
+#   https://<SITE_ADDRESS>/client/                  → 利用者向けの設定スクリプトと CA 証明書
 #   https://<SITE_ADDRESS>/                         → grafana:3000
 # 証明書は Caddy の内部 CA で発行する（tls internal）。
 # クライアントは Caddy のルート CA を NODE_EXTRA_CA_CERTS で信頼する（deploy/README.md 参照）。
 # 公開 DNS 名で ACME を使う場合は `tls internal` を消す。
+# /docs/ と /client/ は認証なしで見られる。トークンやパスワードは置かない（置いているのは公開してよいものだけ）。
 {
 	# 内部 CA のルート証明書をホストの信頼ストアに入れようとしない（コンテナでは不要）
 	skip_install_trust
@@ -15,6 +18,30 @@
 	@otlp path /v1/metrics /v1/logs /v1/traces
 	handle @otlp {
 		reverse_proxy collector:4318
+	}
+
+	redir /docs /docs/
+	redir /client /client/
+
+	handle_path /docs/* {
+		root * /srv/docs
+		# .md はブラウザでそのまま読めるよう文字コード付きのテキストで返す
+		@md path *.md
+		header @md Content-Type "text/plain; charset=utf-8"
+		file_server
+	}
+
+	# Caddy 内部 CA のルート証明書（公開してよい情報）。利用者はこれを NODE_EXTRA_CA_CERTS に指定する
+	handle /client/caddy-root.crt {
+		root * /data/caddy/pki/authorities/local
+		rewrite * /root.crt
+		header Content-Disposition "attachment; filename=caddy-root.crt"
+		file_server
+	}
+
+	handle_path /client/* {
+		root * /srv/client
+		file_server browse
 	}
 
 	handle {

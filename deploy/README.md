@@ -42,9 +42,17 @@ docker compose ps
 | よく変えるもの | `SITE_ADDRESS` | `localhost` |
 | 任意 | 保持期間、イメージのバージョンなど（`.env.example` にコメントで既定値） | `compose.yaml` の既定値 |
 
-Grafana は `https://<SITE_ADDRESS>/` で開きます（ユーザー `admin`、パスワードは `.env` の `GRAFANA_ADMIN_PASSWORD`）。
-ブラウザにも Caddy のルート証明書（下記 `caddy-root.crt`）を信頼させてください。
+起動したら、ブラウザで次を開きます（`<SITE_ADDRESS>` は `.env` に書いた値。サーバー上で試すだけなら `SITE_ADDRESS=localhost` にして `https://localhost/...`）。
+
+| URL | 中身 |
+|---|---|
+| `https://<SITE_ADDRESS>/docs/` | 資料一覧（説明スライド・手引き・端末の設定手順）。**まずここ** |
+| `https://<SITE_ADDRESS>/` | Grafana（ユーザー `admin`、パスワードは `.env` の `GRAFANA_ADMIN_PASSWORD`） |
+| `https://<SITE_ADDRESS>/client/` | 利用者向けの `setup-client.sh`・`settings.json`・`caddy-root.crt` |
+
+ブラウザにも Caddy のルート証明書（`https://<SITE_ADDRESS>/client/caddy-root.crt`）を信頼させてください。
 ダッシュボード「Claude Code」フォルダの「Claude Code 利用状況」が自動で入ります。
+`/docs/` と `/client/` は認証なしで見られます。置いているのはリポジトリの `docs/` と `common/client/`、CA のルート証明書だけで、トークンやパスワードは含みません。
 
 同じホストで複数の案を同時に動かす場合は、443 番と 4318 番が重なるので `compose.yaml` の `ports` を変えてください。
 
@@ -52,6 +60,10 @@ WSL で Windows 側のディレクトリ（`/mnt/c/...`）から動かす場合�
 権限エラーになることがあります。その場合は WSL 側のディレクトリ（`~/...`）に clone してください。
 
 ## クライアント（Claude Code）の設定
+
+利用者の端末は [`common/client/setup-client.sh`](common/client/setup-client.sh) で設定できます（macOS / Linux）。
+接続確認をしてから `~/.claude/settings.json` の `env` に書き足し、`--uninstall` で戻せます。使い方は
+[`docs/admin-guide.md`](../docs/admin-guide.md#4-利用者を追加するオンボーディング) を参照してください。手で設定する場合は次のとおりです。
 
 [`common/client/settings.json`](common/client/settings.json) の `env` を、利用者の `~/.claude/settings.json`（個人で試す場合）か
 managed settings（組織で配る場合。macOS は `/Library/Application Support/ClaudeCode/managed-settings.json`）に入れます。
@@ -62,11 +74,14 @@ managed settings（組織で配る場合。macOS は `/Library/Application Suppo
 `tls internal` の証明書は Caddy 独自の CA で署名されるので、Claude Code（Node.js）にそのルート証明書を渡します。
 
 ```bash
-# サーバーで取り出す
+# 各端末で取る（Caddy が /client/caddy-root.crt で配っている。最初の 1 回だけ検証なし）
+curl -fsSkO https://<SITE_ADDRESS>/client/caddy-root.crt
+# サーバー上で取り出すこともできる
 docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
 ```
 
-各端末に配り、Claude Code を起動する環境で `NODE_EXTRA_CA_CERTS=/path/to/caddy-root.crt` を設定します
+気になる場合は `openssl x509 -in caddy-root.crt -noout -fingerprint -sha256` の値をサーバー上のものと比べてください。
+Claude Code を起動する環境で `NODE_EXTRA_CA_CERTS=/path/to/caddy-root.crt` を設定します
 （シェルの環境変数か、settings.json の `env`）。
 
 ### すぐに試す（サーバー上で、TLS なし）
@@ -155,13 +170,15 @@ macOS 上で直接動かし、実際の Claude Code（v2.1.296）のテレメト
 |---|---|
 | compose ファイル | 3 案とも `docker compose config` で構文を確認 |
 | Collector 0.162.0 | 3 案の設定を `validate` で確認し、実データを受信。トークンなしの送信は 401 |
-| Caddy 2.11.6 | `caddy validate`。内部 CA の HTTPS 経由で Claude Code から送信できた（`NODE_EXTRA_CA_CERTS`） |
+| Caddy 2.11.6 | `caddy validate`。内部 CA の HTTPS 経由で Claude Code から送信できた（`NODE_EXTRA_CA_CERTS`）。`/docs/`・`/client/`・`/client/caddy-root.crt`・Grafana への振り分けを macOS 上の Caddy で確認（`/docs/../` のような外への参照は 404）。落とした証明書でそのままサーバーを検証できた |
 | B | Prometheus 3.15 と Loki 3.7.8 に実データを入れ、ダッシュボード 12 パネルのクエリを Grafana 13.2.3 経由で実行。2 セッション同時実行でもメトリクスとイベントのコストが一致 |
 | D | ClickHouse にテーブルが自動作成され TTL が付くことを確認。12 パネルのクエリを Grafana 経由で実行 |
 | D′ | DuckDB 1.5.6 の otlp 拡張で file exporter の出力を読み、converter で Parquet 化。書きかけ行・実際のローテーション（`logs-<時刻>-size.jsonl`）・統合・再実行で件数が一致。12 パネルのクエリを Grafana（DuckDB プラグイン 0.4.5）経由で実行 |
+| `setup-client.sh` | macOS（bash 3.2）で、python3 と jq のどちらの経路でも同じ結果になることを確認。Collector 0.162.0 に対して接続確認が 200（正しいトークン）／401（違うトークン）を判定、既存キーの保持・再実行・`--uninstall`・壊れた JSON で止まること・既存の `NODE_EXTRA_CA_CERTS` を壊さないこと。自己署名証明書で TLS にした Collector に対し、スクリプトが書いた settings.json（`env` の `NODE_EXTRA_CA_CERTS`）だけで Claude Code v2.1.296 がメトリクスとイベントを送れた |
 
 未確認のこと：
 
 - コンテナ固有の部分（ボリュームの権限、イメージ内のヘルスチェックコマンド、D′ の Dockerfile のビルド）
 - D の ClickHouse を専用ユーザー（`CLICKHOUSE_USER=otel`）で使う場合。検証は `default` ユーザーで行った
 - Grafana へのプラグインのダウンロード（D）
+- `setup-client.sh` の Linux での実行と `--scope managed`（root が必要なため）。Caddy 経由での実行（TLS は Collector 自身で終端して試した）
