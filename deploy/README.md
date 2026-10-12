@@ -149,11 +149,11 @@ macOS 上で直接動かし、実際の Claude Code（v2.1.296）のテレメト
 | B | Prometheus 3.15 と Loki 3.7.8 に実データを入れ、ダッシュボード 12 パネルのクエリを Grafana 13.2.3 経由で実行。2 セッション同時実行でもメトリクスとイベントのコストが一致 |
 | D | ClickHouse にテーブルが自動作成され TTL が付くことを確認。12 パネルのクエリを Grafana 経由で実行 |
 | D′ | DuckDB 1.5.6 の otlp 拡張で file exporter の出力を読み、converter で Parquet 化。書きかけ行・実際のローテーション（`logs-<時刻>-size.jsonl`）・統合・再実行で件数が一致。12 パネルのクエリを Grafana（DuckDB プラグイン 0.4.5）経由で実行 |
-| `setup-client.sh` | macOS（bash 3.2）で、python3 と jq のどちらの経路でも同じ結果になることを確認。Collector 0.162.0 に対して接続確認が 200（正しいトークン）／401（違うトークン）を判定、既存キーの保持・再実行・`--uninstall`・壊れた JSON で止まること・既存の `NODE_EXTRA_CA_CERTS` を壊さないこと |
+| `setup-client.sh` | macOS（bash 3.2）で、python3 と jq のどちらの経路でも同じ結果になることを確認。Collector 0.162.0 に対して接続確認が 200（正しいトークン）／401（違うトークン）を判定、既存キーの保持・再実行・`--uninstall`・壊れた JSON で止まること・既存の `NODE_EXTRA_CA_CERTS` を壊さないこと。自己署名証明書で TLS にした Collector に対し、スクリプトが書いた settings.json（`env` の `NODE_EXTRA_CA_CERTS`）だけで Claude Code v2.1.296 がメトリクスとイベントを送れた |
 
 未確認のこと：
 
 - コンテナ固有の部分（ボリュームの権限、イメージ内のヘルスチェックコマンド、D′ の Dockerfile のビルド）
 - D の ClickHouse を専用ユーザー（`CLICKHOUSE_USER=otel`）で使う場合。検証は `default` ユーザーで行った
 - Grafana へのプラグインのダウンロード（D）
-- `setup-client.sh` の Linux での実行と `--scope managed`（root が必要なため）、Caddy の内部 CA を使った HTTPS での接続確認
+- `setup-client.sh` の Linux での実行と `--scope managed`（root が必要なため）。Caddy 経由での実行（TLS は Collector 自身で終端して試した）

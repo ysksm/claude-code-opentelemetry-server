@@ -246,7 +246,7 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
 <div class="cols cols-52">
   <div class="panel green">
     <h3>送られるもの</h3>
-    <table class="tight small">
+    <table class="tight small nowrap">
       <tr><th>利用者</th><td>メールアドレス、アカウント・組織 ID、セッション ID</td></tr>
       <tr><th>環境</th><td>バージョン、OS・端末の種類、Git リポジトリ名</td></tr>
       <tr><th>メトリクス</th><td>コスト（概算 USD）、トークン数、セッション数、変更行数、コミット・PR 数、操作時間</td></tr>
@@ -528,6 +528,7 @@ docker compose logs \
   <tr><td>ある利用者のデータが出ない</td><td>利用者に <code>setup-client.sh --check</code>。OK なら Claude Code を再起動したか。リポジトリの <code>.claude/settings.json</code> に書いていないか（OTel の設定は無視される）</td></tr>
   <tr><td><code>--check</code> が 401</td><td>トークンが違う。入れ替え前の古いトークンではないか</td></tr>
   <tr><td>「証明書を検証できません」</td><td><code>--ca-cert</code> で <code>caddy-root.crt</code> を渡したか。Caddy のボリュームを作り直して CA が変わっていないか</td></tr>
+  <tr><td><code>--check</code> は OK なのにデータが来ない</td><td>Claude Code を再起動したか。だめなら <code>NODE_EXTRA_CA_CERTS</code> をシェルの環境変数にも設定</td></tr>
   <tr><td>「サーバーに接続できません」</td><td>端末から 443 番に届くか（VPN・ファイアウォール）。ホスト名を引けるか</td></tr>
   <tr><td>全員分が止まった</td><td><code>docker compose ps</code> と Collector のログ。保存先（Prometheus・Loki ／ ClickHouse）が動いているか。ディスクの空き</td></tr>
   <tr><td>D′ で直近だけ出ない</td><td>変換の間隔（既定 5 分）を待つ。<code>docker compose logs converter</code></td></tr>
