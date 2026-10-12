@@ -205,7 +205,7 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
   <div class="stack">
     <table class="small nowrap">
       <tr><th>URL</th><td><code>https://&lt;SITE_ADDRESS&gt;/</code>（資料は <code>/docs/</code>）</td></tr>
-      <tr><th>管理者</th><td><code>admin</code> ／ <code>.env</code> の <code>GRAFANA_ADMIN_PASSWORD</code></td></tr>
+      <tr><th>管理者</th><td><code>admin</code> ／ <code>.env</code> の <code>GRAFANA_ADMIN_PASSWORD</code>（起動のたびに合わせ直す）</td></tr>
       <tr><th>場所</th><td>Dashboards → フォルダ「Claude Code」→「Claude Code 利用状況（…）」</td></tr>
       <tr><th>期間</th><td>右上で選ぶ（既定 Last 7 days）。全パネルに効く</td></tr>
       <tr><th>更新</th><td>5 分ごとに自動</td></tr>
@@ -432,6 +432,7 @@ docker compose logs \
 <h2>症状から確かめること（サーバーと画面）</h2>
 <table class="small">
   <tr><th style="width:30%">症状</th><th>確かめること</th></tr>
+  <tr><td><code>admin</code> でログインできない</td><td>パスワードは <code>.env</code> の <code>GRAFANA_ADMIN_PASSWORD</code>。<code>docker compose up -d --force-recreate grafana</code> で合わせ直し、<code>docker compose logs grafana | grep start.sh</code> に「合わせました」と出るか確認。何度も失敗した直後は 5 分ほど待つ</td></tr>
   <tr><td>ブラウザで Grafana が証明書エラー</td><td><code>caddy-root.crt</code> を OS の信頼ストアに入れる</td></tr>
   <tr><td>全員分のデータが止まった</td><td><code>docker compose ps</code> と <code>docker compose logs collector</code>。D は ClickHouse、B は Prometheus・Loki が動いているか。ディスクが一杯になっていないか</td></tr>
   <tr><td>D′ で直近のデータだけ出ない</td><td>変換の間隔（既定 5 分）を待つ。<code>docker compose logs converter</code></td></tr>

@@ -47,11 +47,14 @@ docker compose ps
 | URL | 中身 |
 |---|---|
 | `https://<SITE_ADDRESS>/docs/` | 資料一覧（説明スライド・手引き・端末の設定手順）。**まずここ** |
-| `https://<SITE_ADDRESS>/` | Grafana（ユーザー `admin`、パスワードは `.env` の `GRAFANA_ADMIN_PASSWORD`） |
+| `https://<SITE_ADDRESS>/` | Grafana（ユーザー `admin`、パスワードは `.env` の `GRAFANA_ADMIN_PASSWORD`。`grep '^GRAFANA_ADMIN_PASSWORD=' .env` で表示） |
 | `https://<SITE_ADDRESS>/client/` | 利用者向けの `setup-client.sh`・`settings.json`・`caddy-root.crt` |
 
 ブラウザにも Caddy のルート証明書（`https://<SITE_ADDRESS>/client/caddy-root.crt`）を信頼させてください。
 ダッシュボード「Claude Code」フォルダの「Claude Code 利用状況」が自動で入ります。
+Grafana は起動するたびに `admin` のパスワードを `.env` の `GRAFANA_ADMIN_PASSWORD` に合わせ直します（[`common/grafana/start.sh`](common/grafana/start.sh)）。
+Grafana 自体はこの値を最初の起動時にしか使わないため、そのままでは `.env` を変えたり `setup-env.sh` をやり直したりした後にログインできなくなるからです。
+パスワードを変えるときは `.env` を書き換えて `docker compose up -d --force-recreate grafana` を実行します（画面から変えても次の起動で戻ります）。
 `/docs/` と `/client/` は認証なしで見られます。置いているのはリポジトリの `docs/` と `common/client/`、CA のルート証明書だけで、トークンやパスワードは含みません。
 
 同じホストで複数の案を同時に動かす場合は、443 番と 4318 番が重なるので `compose.yaml` の `ports` を変えてください。
@@ -175,10 +178,12 @@ macOS 上で直接動かし、実際の Claude Code（v2.1.296）のテレメト
 | D | ClickHouse にテーブルが自動作成され TTL が付くことを確認。12 パネルのクエリを Grafana 経由で実行 |
 | D′ | DuckDB 1.5.6 の otlp 拡張で file exporter の出力を読み、converter で Parquet 化。書きかけ行・実際のローテーション（`logs-<時刻>-size.jsonl`）・統合・再実行で件数が一致。12 パネルのクエリを Grafana（DuckDB プラグイン 0.4.5）経由で実行 |
 | `setup-client.sh` | macOS（bash 3.2）で、python3 と jq のどちらの経路でも同じ結果になることを確認。Collector 0.162.0 に対して接続確認が 200（正しいトークン）／401（違うトークン）を判定、既存キーの保持・再実行・`--uninstall`・壊れた JSON で止まること・既存の `NODE_EXTRA_CA_CERTS` を壊さないこと。自己署名証明書で TLS にした Collector に対し、スクリプトが書いた settings.json（`env` の `NODE_EXTRA_CA_CERTS`）だけで Claude Code v2.1.296 がメトリクスとイベントを送れた |
+| Grafana の `start.sh` | Grafana 13.2.3 を macOS 上で、公式イメージの `/run.sh` と同じパス指定で動かして確認。`start.sh` なしで `.env` の値を変えて再起動すると新しい値でログインできない（401）ことを再現し、`start.sh` 経由では新しい値で入れて古い値は拒否される。初回起動・同じ値での再起動・記号を含む値・合わせ直しに失敗しても Grafana は起動すること・ログにパスワードが出ないこと |
 
 未確認のこと：
 
 - コンテナ固有の部分（ボリュームの権限、イメージ内のヘルスチェックコマンド、D′ の Dockerfile のビルド）
 - D の ClickHouse を専用ユーザー（`CLICKHOUSE_USER=otel`）で使う場合。検証は `default` ユーザーで行った
 - Grafana へのプラグインのダウンロード（D）
+- コンテナ内での `start.sh`（entrypoint の差し替え。D′ の Ubuntu 版イメージを含む）
 - `setup-client.sh` の Linux での実行と `--scope managed`（root が必要なため）。Caddy 経由での実行（TLS は Collector 自身で終端して試した）

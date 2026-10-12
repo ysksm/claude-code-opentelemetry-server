@@ -370,7 +370,7 @@ body.overview .slide { display: flex; position: relative; width: 100%; aspect-ra
   <div class="stack">
     <table class="small nowrap">
       <tr><th>URL</th><td><code>https://&lt;SITE_ADDRESS&gt;/</code>（資料は <code>/docs/</code>）</td></tr>
-      <tr><th>管理者</th><td><code>admin</code> ／ <code>.env</code> の <code>GRAFANA_ADMIN_PASSWORD</code></td></tr>
+      <tr><th>管理者</th><td><code>admin</code> ／ <code>.env</code> の <code>GRAFANA_ADMIN_PASSWORD</code>（起動のたびに合わせ直す）</td></tr>
       <tr><th>場所</th><td>Dashboards → フォルダ「Claude Code」→「Claude Code 利用状況（…）」</td></tr>
       <tr><th>期間</th><td>右上で選ぶ（既定 Last 7 days）。全パネルに効く</td></tr>
       <tr><th>更新</th><td>5 分ごとに自動</td></tr>
@@ -543,6 +543,7 @@ docker compose logs \
   <tr><td><code>--check</code> が 401</td><td>トークンが違う。入れ替え前の古いトークンではないか</td></tr>
   <tr><td>「証明書を検証できません」</td><td><code>--ca-cert</code> で <code>caddy-root.crt</code> を渡したか。Caddy のボリュームを作り直して CA が変わっていないか</td></tr>
   <tr><td><code>--check</code> は OK なのにデータが来ない</td><td>Claude Code を再起動したか。だめなら <code>NODE_EXTRA_CA_CERTS</code> をシェルの環境変数にも設定</td></tr>
+  <tr><td><code>admin</code> でログインできない</td><td>パスワードは <code>.env</code> の値。<code>docker compose up -d --force-recreate grafana</code> で合わせ直す</td></tr>
   <tr><td>「サーバーに接続できません」</td><td>端末から 443 番に届くか（VPN・ファイアウォール）。ホスト名を引けるか</td></tr>
   <tr><td>全員分が止まった</td><td><code>docker compose ps</code> と Collector のログ。保存先（Prometheus・Loki ／ ClickHouse）が動いているか。ディスクの空き</td></tr>
   <tr><td>D′ で直近だけ出ない</td><td>変換の間隔（既定 5 分）を待つ。<code>docker compose logs converter</code></td></tr>

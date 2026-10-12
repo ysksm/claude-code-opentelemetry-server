@@ -73,12 +73,15 @@ services:
         GRAFANA_VERSION: ${GRAFANA_VERSION:-13.2.3}
         DUCKDB_PLUGIN_VERSION: ${DUCKDB_PLUGIN_VERSION:-0.4.5}
     restart: unless-stopped
+    # 起動のたびに admin のパスワードを .env の GRAFANA_ADMIN_PASSWORD に合わせてから Grafana を起動する
+    entrypoint: ["/bin/sh", "/usr/local/bin/start-grafana.sh"]
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD が未設定です。deploy/setup-env.sh で .env を作ってください}
       GF_SERVER_ROOT_URL: https://${SITE_ADDRESS:-localhost}/
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
     volumes:
+      - ../common/grafana/start.sh:/usr/local/bin/start-grafana.sh:ro
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana-dashboards:ro
