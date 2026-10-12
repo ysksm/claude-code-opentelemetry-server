@@ -3,12 +3,12 @@ name: claude-otel-duckdb
 
 services:
   caddy:
-    image: caddy:${CADDY_VERSION}
+    image: caddy:${CADDY_VERSION:-2.11.6}
     restart: unless-stopped
     ports:
       - "443:443"
     environment:
-      SITE_ADDRESS: ${SITE_ADDRESS}
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
     volumes:
       - ../common/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -28,11 +28,11 @@ services:
       - ./data:/data
 
   collector:
-    image: otel/opentelemetry-collector-contrib:${OTELCOL_VERSION}
+    image: otel/opentelemetry-collector-contrib:${OTELCOL_VERSION:-0.162.0}
     restart: unless-stopped
     command: ["--config=/etc/otelcol/config.yaml"]
     environment:
-      OTEL_INGEST_TOKEN: ${OTEL_INGEST_TOKEN}
+      OTEL_INGEST_TOKEN: ${OTEL_INGEST_TOKEN:?OTEL_INGEST_TOKEN が未設定です。deploy/setup-env.sh で .env を作ってください}
       RAW_RETENTION_DAYS: ${RAW_RETENTION_DAYS:-400}
     volumes:
       - ./collector/config.yaml:/etc/otelcol/config.yaml:ro
@@ -49,7 +49,7 @@ services:
     build:
       context: ./converter
       args:
-        DUCKDB_VERSION: ${DUCKDB_VERSION}
+        DUCKDB_VERSION: ${DUCKDB_VERSION:-1.5.6}
     restart: unless-stopped
     environment:
       CONVERT_INTERVAL_SECONDS: ${CONVERT_INTERVAL_SECONDS:-300}
@@ -67,12 +67,12 @@ services:
     build:
       context: ./grafana
       args:
-        GRAFANA_VERSION: ${GRAFANA_VERSION}
-        DUCKDB_PLUGIN_VERSION: ${DUCKDB_PLUGIN_VERSION}
+        GRAFANA_VERSION: ${GRAFANA_VERSION:-13.2.3}
+        DUCKDB_PLUGIN_VERSION: ${DUCKDB_PLUGIN_VERSION:-0.4.5}
     restart: unless-stopped
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
-      GF_SERVER_ROOT_URL: https://${SITE_ADDRESS}/
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD が未設定です。deploy/setup-env.sh で .env を作ってください}
+      GF_SERVER_ROOT_URL: https://${SITE_ADDRESS:-localhost}/
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
     volumes:

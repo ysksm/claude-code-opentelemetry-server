@@ -3,23 +3,23 @@ name: claude-otel-grafana
 
 services:
   caddy:
-    image: caddy:${CADDY_VERSION}
+    image: caddy:${CADDY_VERSION:-2.11.6}
     restart: unless-stopped
     ports:
       - "443:443"
     environment:
-      SITE_ADDRESS: ${SITE_ADDRESS}
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
     volumes:
       - ../common/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
     depends_on: [collector, grafana]
 
   collector:
-    image: otel/opentelemetry-collector-contrib:${OTELCOL_VERSION}
+    image: otel/opentelemetry-collector-contrib:${OTELCOL_VERSION:-0.162.0}
     restart: unless-stopped
     command: ["--config=/etc/otelcol/config.yaml"]
     environment:
-      OTEL_INGEST_TOKEN: ${OTEL_INGEST_TOKEN}
+      OTEL_INGEST_TOKEN: ${OTEL_INGEST_TOKEN:?OTEL_INGEST_TOKEN が未設定です。deploy/setup-env.sh で .env を作ってください}
     volumes:
       - ./collector/config.yaml:/etc/otelcol/config.yaml:ro
     ports:
@@ -30,7 +30,7 @@ services:
     depends_on: [prometheus, loki]
 
   prometheus:
-    image: prom/prometheus:${PROMETHEUS_VERSION}
+    image: prom/prometheus:${PROMETHEUS_VERSION:-v3.15.0}
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -50,7 +50,7 @@ services:
       retries: 6
 
   loki:
-    image: grafana/loki:${LOKI_VERSION}
+    image: grafana/loki:${LOKI_VERSION:-3.7.8}
     restart: unless-stopped
     command: ["-config.file=/etc/loki/config.yaml", "-config.expand-env=true"]
     environment:
@@ -65,11 +65,11 @@ services:
       retries: 12
 
   grafana:
-    image: grafana/grafana:${GRAFANA_VERSION}
+    image: grafana/grafana:${GRAFANA_VERSION:-13.2.3}
     restart: unless-stopped
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
-      GF_SERVER_ROOT_URL: https://${SITE_ADDRESS}/
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD が未設定です。deploy/setup-env.sh で .env を作ってください}
+      GF_SERVER_ROOT_URL: https://${SITE_ADDRESS:-localhost}/
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
     volumes:
