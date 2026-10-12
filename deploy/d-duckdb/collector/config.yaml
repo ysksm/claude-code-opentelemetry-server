@@ -1,0 +1,61 @@
+# 案 D′：metrics と logs を OTLP JSONL ファイルに書く。converter が DuckDB で Parquet に変換する。
+# このファイルは監査用の原本も兼ねる（案 A と同じ）。
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  bearertokenauth:
+    token: ${env:OTEL_INGEST_TOKEN}
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+        auth:
+          authenticator: bearertokenauth
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+  batch: {}
+
+exporters:
+  # DuckDB の otlp 拡張は 1 ファイル 100 MB までしか読めないので、それより小さくローテーションする。
+  file/logs:
+    path: ${env:RAW_DIR:-/data/raw}/logs/logs.jsonl
+    format: json
+    rotation:
+      max_megabytes: 10
+      max_days: ${env:RAW_RETENTION_DAYS:-400}
+      max_backups: 100000
+      localtime: false
+  file/metrics:
+    path: ${env:RAW_DIR:-/data/raw}/metrics/metrics.jsonl
+    format: json
+    rotation:
+      max_megabytes: 10
+      max_days: ${env:RAW_RETENTION_DAYS:-400}
+      max_backups: 100000
+      localtime: false
+
+service:
+  extensions: [health_check, bearertokenauth]
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [file/metrics]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [file/logs]
