@@ -209,7 +209,7 @@ macOS 上で直接動かし、実際の Claude Code（v2.1.296）のテレメト
 |---|---|
 | compose ファイル | 3 案とも `docker compose config` で構文を確認 |
 | Collector 0.162.0 | 3 案の設定を `validate` で確認し、実データを受信。トークンなしの送信は 401 |
-| Caddy 2.11.6 | `caddy validate`。内部 CA の HTTPS 経由で Claude Code から送信できた（`NODE_EXTRA_CA_CERTS`）。`/docs/`・`/client/`・`/client/caddy-root.crt`・Grafana への振り分けを macOS 上の Caddy で確認（`/docs/../` のような外への参照は 404）。落とした証明書でそのままサーバーを検証できた |
+| Caddy 2.11.6 | `caddy validate`。内部 CA の HTTPS 経由で Claude Code から送信できた（`NODE_EXTRA_CA_CERTS`）。`/docs/`・`/client/`・`/client/caddy-root.crt`・Grafana への振り分けを macOS 上の Caddy で確認（`/docs/../` のような外への参照は 404）。落とした証明書でそのままサーバーを検証できた。`SITE_ADDRESS` が IP アドレスで、接続を受ける IP と違う（コンテナ内と同じ状況）とき、`default_sni` がないと SNI なしの接続が TLS で失敗し、入れると IP の名前で証明書を検証して 200 になることを確認 |
 | B | Prometheus 3.15 と Loki 3.7.8 に実データを入れ、ダッシュボード 12 パネルのクエリを Grafana 13.2.3 経由で実行。2 セッション同時実行でもメトリクスとイベントのコストが一致 |
 | D | ClickHouse にテーブルが自動作成され TTL が付くことを確認。12 パネルのクエリを Grafana 経由で実行 |
 | D′ | DuckDB 1.5.6 の otlp 拡張で file exporter の出力を読み、converter で Parquet 化。書きかけ行・実際のローテーション（`logs-<時刻>-size.jsonl`）・統合・再実行で件数が一致。12 パネルのクエリを Grafana（DuckDB プラグイン 0.4.5）経由で実行 |
