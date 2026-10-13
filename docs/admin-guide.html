@@ -412,6 +412,23 @@ docker compose logs \
 </div>
 </section>
 
+<!-- check -->
+<section class="slide">
+<p class="eyebrow">6. 困ったとき</p>
+<h2>つながらないときは、まず <code>check.sh</code>：内側から 1 段ずつ</h2>
+<p class="lead">サーバーで <code>cd deploy &amp;&amp; ./check.sh d-clickhouse</code>（案のディレクトリ名）。NG になった段で止まり、直し方を表示する。</p>
+<table class="small">
+  <tr><th style="width:4%"></th><th style="width:16%">段</th><th style="width:38%">確かめること</th><th>NG のときに多い原因</th></tr>
+  <tr><td>1</td><td>Docker</td><td>コンテナがすべて動いているか</td><td>Docker（WSL なら Docker Desktop）が動いていない、コンテナが落ちている</td></tr>
+  <tr><td>2</td><td>Collector</td><td><code>127.0.0.1:4318</code> に TLS なしで送れるか</td><td><code>.env</code> のトークンを変えたあと collector を作り直していない</td></tr>
+  <tr><td>3</td><td>Caddy</td><td>サーバー自身から HTTPS で <code>/docs/</code> を開けるか</td><td>443 番がぶつかっている、<code>SITE_ADDRESS</code> を変えたあと caddy を作り直していない</td></tr>
+  <tr><td>4</td><td>送り先</td><td>HTTPS の <code>/v1/metrics</code> に送れるか</td><td>Caddy の振り分け</td></tr>
+  <tr><td>5</td><td>Grafana</td><td><code>admin</code> でログインできるか（1 回だけ試す）</td><td>パスワードが合っていない</td></tr>
+  <tr><td>6</td><td>アドレス</td><td><code>SITE_ADDRESS</code> でこのサーバーに届くか</td><td>IP が違う、WSL で Windows から転送していない、ファイアウォール</td></tr>
+</table>
+<div class="callout ai">サーバーが全部 OK になったら、ほかの端末で：ブラウザで <code>/docs/</code> を開く → Grafana にログイン → <code>setup-client.sh --check</code>。手順は <code>check.sh</code> が実際の URL で表示する。</div>
+</section>
+
 <!-- trouble-client -->
 <section class="slide">
 <p class="eyebrow">6. 困ったとき</p>
