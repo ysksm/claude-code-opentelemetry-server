@@ -193,13 +193,25 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/x
 
 ## 7. 困ったとき
 
+**まずサーバーで `deploy/check.sh` を実行してください。** 画面が開けない・ログインできない・データが届かないときは、
+Docker → Collector → Caddy（HTTPS）→ 送り先 → Grafana → アドレス（WSL・ファイアウォール）の順に 1 段ずつ確かめ、
+NG になった段で止まって直し方を表示します。最後に、ほかの端末から確かめる手順を実際の URL で表示します。
+
+```bash
+cd deploy
+./check.sh d-clickhouse      # 案のディレクトリ名
+```
+
+ほかの端末では、ブラウザで `/docs/` を開く → Grafana にログインする → `setup-client.sh --check` の順に進めます。
+各段の内容は [`deploy/README.md`](../deploy/README.md#つながらないとき1-段ずつ切り分ける) を参照してください。
+
 | 症状 | 確かめること |
 |---|---|
 | ある利用者のデータが出ない | 利用者に `setup-client.sh --check` を実行してもらう。OK なら Claude Code を再起動したか（設定は起動時に読まれる）、`.claude/settings.json`（リポジトリ側）に書いていないか（OTel の設定は無視される） |
 | `--check` が 401 | トークンが違う。入れ替え後の古いトークンを使っていないか |
 | `--check` が「証明書を検証できません」 | `--ca-cert` で `caddy-root.crt` を渡したか。Caddy のボリュームを作り直して CA が変わっていないか |
 | `--check` は OK なのにデータが来ない | `--check` は curl で確かめるので、Claude Code 側の証明書の読み込みまでは確かめていない。Claude Code を再起動したか確認し、それでも来なければ `NODE_EXTRA_CA_CERTS=~/.claude/otel/ca.crt` をシェルの環境変数にも設定して試す |
-| 「サーバーに接続できません」 | 端末から 443 番に届くか（VPN、ファイアウォール）。`SITE_ADDRESS` の名前を引けるか |
+| 「サーバーに接続できません」 | サーバーで `check.sh` が 6 まで OK か。端末から 443 番に届くか（VPN、ファイアウォール、WSL では Windows からの転送）。`SITE_ADDRESS` の名前を引けるか |
 | `admin` でログインできない | パスワードは `.env` の `GRAFANA_ADMIN_PASSWORD`。`docker compose up -d --force-recreate grafana` で合わせ直し、`docker compose logs grafana \| grep start.sh` に「合わせました」と出るか確認。何度も失敗した直後は 5 分ほど待つ。それでも入れないときは [Grafana を最初からやり直す](#grafana-を最初からやり直す) |
 | ブラウザで Grafana が証明書エラー | `caddy-root.crt` を OS の信頼ストアに入れる |
 | 全員分のデータが止まった | `docker compose ps` と `docker compose logs collector`。D は ClickHouse、B は Prometheus・Loki が動いているか。ディスクが一杯になっていないか |

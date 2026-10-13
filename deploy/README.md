@@ -58,6 +58,28 @@ Grafana 自体はこの値を最初の起動時にしか使わないため、そ
 パスワードのためにボリュームを消す必要はありません（下の「Grafana を最初からやり直す」は、それでも直らないときだけ使います）。
 `/docs/` と `/client/` は認証なしで見られます。置いているのはリポジトリの `docs/` と `common/client/`、CA のルート証明書だけで、トークンやパスワードは含みません。
 
+### つながらないとき（1 段ずつ切り分ける）
+
+ブラウザや Claude Code が届くまでには、Docker・Collector・Caddy（HTTPS）・Grafana・ネットワーク（WSL では Windows を経由）と
+いくつもの段があります。サーバー上で `check.sh` を実行すると、内側から 1 段ずつ確かめ、NG になった段で止まって直し方を表示します。
+
+```bash
+cd deploy
+./check.sh d-clickhouse      # 案のディレクトリ名
+```
+
+| 段 | 確かめること | NG のときに多い原因 |
+|---|---|---|
+| 1. Docker | コンテナがすべて動いているか | Docker（WSL なら Docker Desktop）が動いていない、コンテナが落ちている |
+| 2. Collector | TLS なしの `127.0.0.1:4318` にトークン付きで送れるか（Caddy を通さない） | `.env` のトークンを変えたあと collector を作り直していない |
+| 3. Caddy | サーバー自身から HTTPS で `/docs/` を開けるか（証明書も検証） | 443 番がほかのソフトとぶつかっている、`SITE_ADDRESS` を変えたあと caddy を作り直していない |
+| 4. 送り先 | HTTPS の `/v1/metrics` に送れるか（Claude Code と同じ経路） | Caddy の振り分け |
+| 5. Grafana | `admin` / `GRAFANA_ADMIN_PASSWORD` でログインできるか（1 回だけ試す） | パスワードが合っていない（下の「Grafana を最初からやり直す」も参照） |
+| 6. アドレス | `SITE_ADDRESS` で実際にこのサーバーに届くか | IP アドレスが違う、WSL で Windows から転送していない、ファイアウォール |
+
+最後に、ほかの端末から確かめる手順（WSL のときは Windows 側の確認も）を、実際の URL で表示します。
+ほかの端末では、ブラウザで `/docs/` を開く → Grafana にログインする → `setup-client.sh --check` の順に進めます。
+
 同じホストで複数の案を同時に動かす場合は、443 番と 4318 番が重なるので `compose.yaml` の `ports` を変えてください。
 
 WSL で Windows 側のディレクトリ（`/mnt/c/...`）から動かす場合、案 D′ は `data/` をバインドマウントして所有者を変えるため、
@@ -214,6 +236,7 @@ macOS 上で直接動かし、実際の Claude Code（v2.1.296）のテレメト
 | D | ClickHouse にテーブルが自動作成され TTL が付くことを確認。12 パネルのクエリを Grafana 経由で実行 |
 | D′ | DuckDB 1.5.6 の otlp 拡張で file exporter の出力を読み、converter で Parquet 化。書きかけ行・実際のローテーション（`logs-<時刻>-size.jsonl`）・統合・再実行で件数が一致。12 パネルのクエリを Grafana（DuckDB プラグイン 0.4.5）経由で実行 |
 | `setup-client.sh` | macOS（bash 3.2）で、python3 と jq のどちらの経路でも同じ結果になることを確認。Collector 0.162.0 に対して接続確認が 200（正しいトークン）／401（違うトークン）を判定、既存キーの保持・再実行・`--uninstall`・壊れた JSON で止まること・既存の `NODE_EXTRA_CA_CERTS` を壊さないこと。自己署名証明書で TLS にした Collector に対し、スクリプトが書いた settings.json（`env` の `NODE_EXTRA_CA_CERTS`）だけで Claude Code v2.1.296 がメトリクスとイベントを送れた |
+| `check.sh` | macOS 上で、`docker` を偽のコマンドに置き換え、otelcol 0.162.0・Caddy 2.11.6・Grafana 13.2.3 を実際に動かして確認。全段 OK、トークン違い（2 で 401）、Grafana のパスワード違い（5 で 401）、コンテナの停止・欠落・起動中（1）、Caddy 停止（3 でつながらない）、`default_sni` のない Caddyfile（3 で TLS 失敗）、`SITE_ADDRESS` に届かない（6）、`localhost`、WSL のときの表示 |
 | Grafana の `start.sh` | Grafana 13.2.3 を macOS 上で、公式イメージの `/run.sh` と同じパス指定で動かして確認。`start.sh` なしで `.env` の値を変えて再起動すると新しい値でログインできない（401）ことを再現し、`start.sh` 経由では新しい値で入れて古い値は拒否される。初回起動・同じ値での再起動・記号を含む値・合わせ直しに失敗しても Grafana は起動すること・ログにパスワードが出ないこと |
 
 未確認のこと：
@@ -222,4 +245,5 @@ macOS 上で直接動かし、実際の Claude Code（v2.1.296）のテレメト
 - D の ClickHouse を専用ユーザー（`CLICKHOUSE_USER=otel`）で使う場合。検証は `default` ユーザーで行った
 - Grafana へのプラグインのダウンロード（D）
 - コンテナ内での `start.sh`（entrypoint の差し替え。D′ の Ubuntu 版イメージを含む）
+- 実際の Docker・WSL での `check.sh`（`docker compose ps --format`、`compose port`、`compose exec` の出力、WSL からの到達確認）
 - `setup-client.sh` の Linux での実行と `--scope managed`（root が必要なため）。Caddy 経由での実行（TLS は Collector 自身で終端して試した）
