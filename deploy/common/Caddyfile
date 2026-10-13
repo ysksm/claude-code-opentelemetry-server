@@ -10,6 +10,10 @@
 {
 	# 内部 CA のルート証明書をホストの信頼ストアに入れようとしない（コンテナでは不要）
 	skip_install_trust
+	# SITE_ADDRESS が IP アドレスのとき、ブラウザや curl は SNI を送らない（IP は SNI に入れない決まり）。
+	# Caddy は SNI がないと接続先の IP で証明書を選ぶが、コンテナ内ではそれがコンテナの IP になり、
+	# 証明書が見つからず TLS が失敗する。SNI がないときは SITE_ADDRESS の証明書を使わせる。
+	default_sni {$SITE_ADDRESS:localhost}
 }
 
 {$SITE_ADDRESS:localhost} {
