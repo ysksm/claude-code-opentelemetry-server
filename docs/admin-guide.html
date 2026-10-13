@@ -432,7 +432,7 @@ docker compose logs \
 <h2>症状から確かめること（サーバーと画面）</h2>
 <table class="small">
   <tr><th style="width:30%">症状</th><th>確かめること</th></tr>
-  <tr><td><code>admin</code> でログインできない</td><td>パスワードは <code>.env</code> の <code>GRAFANA_ADMIN_PASSWORD</code>。<code>docker compose up -d --force-recreate grafana</code> で合わせ直し、<code>docker compose logs grafana | grep start.sh</code> に「合わせました」と出るか確認。何度も失敗した直後は 5 分ほど待つ</td></tr>
+  <tr><td><code>admin</code> でログインできない</td><td>パスワードは <code>.env</code> の <code>GRAFANA_ADMIN_PASSWORD</code>。<code>docker compose up -d --force-recreate grafana</code> で合わせ直し、<code>docker compose logs grafana | grep start.sh</code> に「合わせました」と出るか確認。何度も失敗した直後は 5 分ほど待つ。それでも入れないときは次のページ</td></tr>
   <tr><td>ブラウザで Grafana が証明書エラー</td><td><code>caddy-root.crt</code> を OS の信頼ストアに入れる</td></tr>
   <tr><td>全員分のデータが止まった</td><td><code>docker compose ps</code> と <code>docker compose logs collector</code>。D は ClickHouse、B は Prometheus・Loki が動いているか。ディスクが一杯になっていないか</td></tr>
   <tr><td>D′ で直近のデータだけ出ない</td><td>変換の間隔（既定 5 分）を待つ。<code>docker compose logs converter</code></td></tr>
@@ -440,6 +440,38 @@ docker compose logs \
   <tr><td>リポジトリ別コストが空欄</td><td>Git リポジトリの外で使っている、または <code>OTEL_METRICS_INCLUDE_REPOSITORY</code> が入っていない</td></tr>
   <tr><td>コストが請求額と合わない</td><td>ダッシュボードの値は概算（「数値を読むときの注意」）</td></tr>
 </table>
+</section>
+
+<!-- grafana-reset -->
+<section class="slide">
+<p class="eyebrow">6. 困ったとき</p>
+<h2>Grafana を最初からやり直す：Grafana のボリュームだけ消す</h2>
+<p class="lead">ユーザーや設定はボリューム <code>grafana-data</code> の DB にある。コンテナやイメージを消しても残る。パスワードは <code>.env</code> を変えて再起動すれば合うので、これは最後の手段。</p>
+<div class="cols cols-2">
+  <div style="display:flex;flex-direction:column;gap:12px">
+<pre class="term xs">cd deploy/d-clickhouse     # 使っている案
+docker compose stop grafana
+docker compose rm -f grafana
+docker volume ls | grep grafana-data
+docker volume rm claude-otel-clickhouse_grafana-data
+docker compose up -d grafana</pre>
+<table class="small">
+  <tr><th>案</th><th>Grafana のボリューム</th></tr>
+  <tr><td>B</td><td><code>claude-otel-grafana_grafana-data</code></td></tr>
+  <tr><td>D</td><td><code>claude-otel-clickhouse_grafana-data</code></td></tr>
+  <tr><td>D′</td><td><code>claude-otel-duckdb_grafana-data</code></td></tr>
+</table>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="panel">
+      <h3>消えるもの</h3>
+      <p class="small">画面で作ったユーザー・チーム・権限、画面で作った・編集したダッシュボード、サービスアカウント、アラートなど</p>
+      <h3>残るもの</h3>
+      <p class="small">収集した利用データ、<code>.env</code>、ダッシュボード「Claude Code 利用状況」とデータソース（起動時に入り直す）。admin は <code>.env</code> の値で作り直される</p>
+    </div>
+    <div class="callout red"><b><code>docker compose down -v</code> は使わない。</b>その案のボリュームがすべて消え、B・D は収集データも消える。<code>caddy-data</code> も消えて証明書が変わり、全利用者に <code>caddy-root.crt</code> を配り直すことになる。</div>
+  </div>
+</div>
 </section>
 
 <!-- summary -->
