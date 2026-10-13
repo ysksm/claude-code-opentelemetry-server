@@ -55,12 +55,48 @@ docker compose ps
 Grafana は起動するたびに `admin` のパスワードを `.env` の `GRAFANA_ADMIN_PASSWORD` に合わせ直します（[`common/grafana/start.sh`](common/grafana/start.sh)）。
 Grafana 自体はこの値を最初の起動時にしか使わないため、そのままでは `.env` を変えたり `setup-env.sh` をやり直したりした後にログインできなくなるからです。
 パスワードを変えるときは `.env` を書き換えて `docker compose up -d --force-recreate grafana` を実行します（画面から変えても次の起動で戻ります）。
+パスワードのためにボリュームを消す必要はありません（下の「Grafana を最初からやり直す」は、それでも直らないときだけ使います）。
 `/docs/` と `/client/` は認証なしで見られます。置いているのはリポジトリの `docs/` と `common/client/`、CA のルート証明書だけで、トークンやパスワードは含みません。
 
 同じホストで複数の案を同時に動かす場合は、443 番と 4318 番が重なるので `compose.yaml` の `ports` を変えてください。
 
 WSL で Windows 側のディレクトリ（`/mnt/c/...`）から動かす場合、案 D′ は `data/` をバインドマウントして所有者を変えるため、
 権限エラーになることがあります。その場合は WSL 側のディレクトリ（`~/...`）に clone してください。
+
+### Grafana を最初からやり直す（Grafana のボリュームだけ消す）
+
+Grafana の設定やユーザーは、コンテナでもイメージでもなく、ボリューム `grafana-data` の中の DB に入っています。
+コンテナを作り直しても（`up --force-recreate`、`down` → `up`）、イメージを消しても、DB はそのまま残ります。
+Grafana を初期の状態に戻したいときは、Grafana のボリュームだけを消します。
+
+```bash
+cd deploy/d-clickhouse                  # 使っている案のディレクトリ
+docker compose stop grafana
+docker compose rm -f grafana
+docker volume ls | grep grafana-data    # 消すボリュームの名前を確かめる
+docker volume rm claude-otel-clickhouse_grafana-data
+docker compose up -d grafana            # .env の GRAFANA_ADMIN_PASSWORD で admin が作り直される
+```
+
+| 案 | ディレクトリ | Grafana のボリューム |
+|---|---|---|
+| B | `b-grafana` | `claude-otel-grafana_grafana-data` |
+| D | `d-clickhouse` | `claude-otel-clickhouse_grafana-data` |
+| D′ | `d-duckdb` | `claude-otel-duckdb_grafana-data` |
+
+- 消えるもの：画面で作ったユーザー・チーム・権限、画面で作ったり編集したりしたダッシュボード、サービスアカウントとそのトークン、アラートなど画面で入れた設定。
+- 残るもの：収集した利用データ、`.env`、リポジトリから入るダッシュボード「Claude Code 利用状況」とデータソース（起動時に入り直す）。
+- D の ClickHouse プラグインは、起動時にもう一度ダウンロードされます（インターネットに出られる必要があります）。
+
+**`docker compose down -v` は使わないでください。** その案のボリュームがすべて消えます。
+
+| 案 | `down -v` で消えるもの |
+|---|---|
+| B | 収集データ（`prometheus-data`、`loki-data`）、`grafana-data`、`caddy-data` |
+| D | 収集データ（`clickhouse-data`）、`grafana-data`、`caddy-data` |
+| D′ | `grafana-data`、`caddy-data`（収集データの `data/` はディレクトリなので残る） |
+
+`caddy-data` が消えると内部 CA が作り直されて証明書が変わり、全利用者に `caddy-root.crt` を配り直すことになります。
 
 ## クライアント（Claude Code）の設定
 

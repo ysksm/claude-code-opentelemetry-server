@@ -200,10 +200,38 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/x
 | `--check` が「証明書を検証できません」 | `--ca-cert` で `caddy-root.crt` を渡したか。Caddy のボリュームを作り直して CA が変わっていないか |
 | `--check` は OK なのにデータが来ない | `--check` は curl で確かめるので、Claude Code 側の証明書の読み込みまでは確かめていない。Claude Code を再起動したか確認し、それでも来なければ `NODE_EXTRA_CA_CERTS=~/.claude/otel/ca.crt` をシェルの環境変数にも設定して試す |
 | 「サーバーに接続できません」 | 端末から 443 番に届くか（VPN、ファイアウォール）。`SITE_ADDRESS` の名前を引けるか |
-| `admin` でログインできない | パスワードは `.env` の `GRAFANA_ADMIN_PASSWORD`。`docker compose up -d --force-recreate grafana` で合わせ直し、`docker compose logs grafana \| grep start.sh` に「合わせました」と出るか確認。何度も失敗した直後は 5 分ほど待つ |
+| `admin` でログインできない | パスワードは `.env` の `GRAFANA_ADMIN_PASSWORD`。`docker compose up -d --force-recreate grafana` で合わせ直し、`docker compose logs grafana \| grep start.sh` に「合わせました」と出るか確認。何度も失敗した直後は 5 分ほど待つ。それでも入れないときは [Grafana を最初からやり直す](#grafana-を最初からやり直す) |
 | ブラウザで Grafana が証明書エラー | `caddy-root.crt` を OS の信頼ストアに入れる |
 | 全員分のデータが止まった | `docker compose ps` と `docker compose logs collector`。D は ClickHouse、B は Prometheus・Loki が動いているか。ディスクが一杯になっていないか |
 | D′ で直近のデータだけ出ない | 変換の間隔（既定 5 分）を待つ。`docker compose logs converter` |
 | 「実行された Bash コマンド」が空 | 利用者側で `--tool-details`（`OTEL_LOG_TOOL_DETAILS=1`）を付けていない。付けるかは組織の方針で決める |
 | リポジトリ別コストが空欄 | Git リポジトリの外で使っている、または `OTEL_METRICS_INCLUDE_REPOSITORY` が入っていない |
 | コストが請求額と合わない | ダッシュボードの値は概算（[2.](#数値を読むときの注意)） |
+
+### Grafana を最初からやり直す
+
+Grafana のユーザーや設定は、コンテナでもイメージでもなく、ボリューム `grafana-data` の中の DB に入っています。
+コンテナを作り直しても、イメージを消しても DB は残るので、Grafana は元の状態のままです。
+パスワードは `.env` を変えて再起動すれば合うので、ふだんはボリュームを消す必要はありません。
+それでもログインできないときや、Grafana を初期の状態に戻したいときだけ、Grafana のボリュームだけを消します。
+
+```bash
+cd deploy/d-clickhouse                  # 使っている案のディレクトリ
+docker compose stop grafana
+docker compose rm -f grafana
+docker volume ls | grep grafana-data    # 消すボリュームの名前を確かめる
+docker volume rm claude-otel-clickhouse_grafana-data
+docker compose up -d grafana            # .env の GRAFANA_ADMIN_PASSWORD で admin が作り直される
+```
+
+| 案 | ディレクトリ | Grafana のボリューム |
+|---|---|---|
+| B | `b-grafana` | `claude-otel-grafana_grafana-data` |
+| D | `d-clickhouse` | `claude-otel-clickhouse_grafana-data` |
+| D′ | `d-duckdb` | `claude-otel-duckdb_grafana-data` |
+
+- 消えるもの：画面で作ったユーザー・チーム・権限（[5.](#5-閲覧者のアカウントを作る) で作ったアカウントは作り直し）、画面で作ったり編集したりしたダッシュボード、サービスアカウント、アラートなど画面で入れた設定。
+- 残るもの：収集した利用データ、`.env`、ダッシュボード「Claude Code 利用状況」とデータソース（起動時に入り直す）。
+
+**`docker compose down -v` は使わないでください。** その案のボリュームがすべて消え、B と D では収集した利用データも消えます。
+`caddy-data` も消えるので、証明書が変わって全利用者に `caddy-root.crt` を配り直すことになります。
